@@ -31,7 +31,7 @@
 - manual — `cp config.example.sh config.sh && nano config.sh`
 
 ## Self-test (run before committing)
-`/bin/bash test.sh` — bash -n + missing-config/required errors + full local file:// integration (deploy → skip → new commit → rollback) + keygen checks. Currently 22 checks.
+`/bin/bash test.sh` — bash -n + missing-config/required errors + full local file:// integration (deploy → skip → new commit → rollback) + keygen + cron + detect checks. Currently 30 checks.
 
 ## Sync strategy (STANDALONE — 2 places only)
 1. This repo (branch `main`) — commit + push here
