@@ -69,7 +69,7 @@
 ## History (latest first)
 
 - **Resource principle:** runner trigger only, server all work; `--single-branch` clone; documented in AGENTS.md + README + references
-- **Trigger choice:** hosted / self-hosted (`runner.sh`) / cron / cron — README "Choose your trigger" table
+- **Trigger choice:** hosted / self-hosted (`runner.sh`) / cron — README "Choose your trigger" table
 - **Runner-lite:** paths-ignore `docs/**`, `permissions: {}`, CI installs rsync only if missing
 - **Fully dynamic:** `detect.sh` auto-detects stack; `HEALTH_WAIT` key; zero hardcoded values
 - **Zero-Actions:** `cron.sh`; `DB_BACKUP_KEEP`
