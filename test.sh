@@ -20,7 +20,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 echo "== 1. Syntax check (bash -n) =="
-for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh cron.sh; do
+for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh cron.sh detect.sh; do
   if bash -n "$f" 2>/dev/null; then ok "bash -n $f"; else bad "bash -n $f"; fi
 done
 
@@ -251,6 +251,34 @@ else
   bad "cron.sh: instructions shown"
   echo "$OUT" | sed 's/^/     /'
 fi
+
+echo "== 11. detect.sh (fully dynamic — auto-detect project) =="
+# create a mini repo with node files
+mkdir -p "$TMP/detect-src"
+echo '{"name":"test","scripts":{"build":"echo ok"}}' > "$TMP/detect-src/package.json"
+echo "index" > "$TMP/detect-src/index.html"
+git init -q "$TMP/detect-src" && git -C "$TMP/detect-src" symbolic-ref HEAD refs/heads/main
+git -C "$TMP/detect-src" add -A
+git -C "$TMP/detect-src" -c user.email=test@test -c user.name=test commit -qm c1
+BARE2="$TMP/repo2.git"; git init -q --bare "$BARE2"
+git -C "$TMP/detect-src" remote add origin "$BARE2"
+git -C "$TMP/detect-src" push -q origin main
+
+mkdir -p "$TMP/detect-kit"
+cp detect.sh auto_deploy.sh "$TMP/detect-kit/"
+cat > "$TMP/detect-kit/config.sh" <<CFG
+REPO_URL="file://$BARE2"
+WORKSPACE_BASE="$TMP/detect-ws"
+LOG_FILE="$TMP/deploy3.log"
+TOGGLE_FLAG="$TMP/flag"
+CFG
+# run detect.sh non-interactively — pipe "yes" to apply
+OUT="$(cd "$TMP/detect-kit" && echo "y" | bash detect.sh main 2>&1)"
+echo "$OUT" | grep -q "node" && ok "detect: app type = node" || bad "detect: app type = node"
+echo "$OUT" | grep -q "build" && ok "detect: build command found" || bad "detect: build command found"
+# check that config.sh was updated
+grep -q 'APP_TYPE="node"' "$TMP/detect-kit/config.sh" && ok "detect: APP_TYPE applied to config.sh" || bad "detect: APP_TYPE applied to config.sh"
+grep -q 'BUILD_CMD="npm install && npm run build"' "$TMP/detect-kit/config.sh" && ok "detect: BUILD_CMD applied" || bad "detect: BUILD_CMD applied"
 
 echo ""
 echo "============================================="

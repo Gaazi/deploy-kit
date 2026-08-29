@@ -195,7 +195,7 @@ echo "$NEW_SHA" > "$WORKSPACE/.deployed_sha"
 # ── 8. Health check (optional — empty SITE_DOMAIN/HEALTH_URL = skip) ─
 HEALTH_URL="${HEALTH_URL:-https://$SITE_DOMAIN/}"
 if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
-  sleep 8  # let the app boot before checking
+  sleep "${HEALTH_WAIT:-8}"  # let the app boot before checking
   if curl -fsS -m 15 "$HEALTH_URL" >/dev/null 2>&1; then
     notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH) — health OK
 <code>${NEW_SHA:0:10}</code>"

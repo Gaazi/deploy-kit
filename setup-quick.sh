@@ -157,6 +157,7 @@ TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
 
 # ── Health check (optional) ──
 HEALTH_URL="$HEALTH_URL"
+HEALTH_WAIT="8"
 
 # ── Git / Advanced ──
 DEPLOY_KEY="$DEPLOY_KEY"

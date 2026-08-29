@@ -161,6 +161,7 @@ TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
 
 # ── Health check (optional) ──
 HEALTH_URL="$HEALTH_URL"
+HEALTH_WAIT="8"
 
 # ── Git / Advanced ──
 DEPLOY_KEY=""
@@ -178,13 +179,11 @@ chmod 600 config.sh
 echo ""
 echo "✅ config.sh created!"
 echo ""
-echo "  ── Next step — SSH keys (1 command, copy-paste ready): ──"
-echo "     /bin/bash keygen.sh"
-echo ""
-echo "  keygen.sh prints 3 copy-paste blocks for GitHub:"
-echo "    1. Public key  → repo → Settings → Deploy keys"
-echo "    2. Private key → repo → Settings → Secrets → SSH_PRIVATE_KEY"
-echo "    3. Host/User/Port → Secrets (SERVER_HOST, SERVER_USER, SSH_PORT)"
+echo "  ── Next steps: ──"
+echo "  1. SSH keys:  /bin/bash keygen.sh"
+echo "  2. Auto-detect your project (fully dynamic):  /bin/bash detect.sh"
+echo "     (reads your repo → sets APP_TYPE/BUILD/MIGRATE/RESTART itself)"
+echo "  3. Deploy:    /bin/bash auto_deploy.sh main"
 echo ""
 
 if yesno "Set up SSH keys now? (recommended — takes 1 minute)" yes; then

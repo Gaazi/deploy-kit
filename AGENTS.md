@@ -46,7 +46,7 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 
 ---
 
-## File Structure (12 files + .agents/)
+## File Structure (13 files + .agents/)
 
 | File | Purpose |
 |------|---------|
@@ -55,6 +55,7 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 | `setup.sh` | Beginner YES/NO setup wizard (Enter = recommended, creates config.sh, auto-runs keygen.sh at end) |
 | `setup-quick.sh` | Paste setup (KEY=VALUE lines, Ctrl+D, no questions) |
 | `keygen.sh` | SSH key helper — one key pair both ways + 3 copy-paste blocks for GitHub |
+| `detect.sh` | **Fully dynamic** — reads your repo, auto-detects APP_TYPE/BUILD/MIGRATE/RESTART |
 | `cron.sh` | **Zero GitHub Actions** — install cron job, deploy every N min, 0 Actions minutes |
 | `test.sh` | Self-test — bash -n + missing-config errors + full local file:// integration test (deploy → skip → rollback) |
 | `config.example.sh` | Settings template — copy to `config.sh` and fill |
