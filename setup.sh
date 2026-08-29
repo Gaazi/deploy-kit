@@ -1,10 +1,12 @@
 #!/bin/bash
 # ============================================================
-# DEPLOY KIT — setup.sh (interactive config generator)
+# DEPLOY KIT — setup.sh (beginner-friendly setup wizard)
 # ------------------------------------------------------------
 #   /bin/bash setup.sh
-# Creates config.sh through questions & answers — a hint on
-# every question (where to get each value). Mistakes are unlikely.
+# Clean YES/NO questions with recommended defaults — a beginner
+# can press Enter all the way and get a working config.
+# Creates config.sh. Then run keygen.sh for SSH keys + GitHub
+# copy-paste blocks.
 # ============================================================
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -16,28 +18,92 @@ fi
 
 ask() { read -rp "$1 [$2]: " v; echo "${v:-$2}"; }
 
+# yesno: $1=question  $2=default (yes|no)  → returns 0=yes, 1=no
+yesno() {
+  local a d
+  [ "$2" = "yes" ] && d="Y/n" || d="y/N"
+  read -rp "$1 ($d): " a
+  case "$a" in
+    "" ) [ "$2" = "yes" ] && return 0 || return 1 ;;
+    y|Y|yes|YES|Yes ) return 0 ;;
+    * ) return 1 ;;
+  esac
+}
+
 echo "============================================="
-echo "  Deploy Kit — Setup (questions & answers)"
-echo "  * Press Enter = use the default value"
+echo "  Deploy Kit — Setup Wizard"
+echo "  * Answer YES/NO or paste values"
+echo "  * Press Enter = recommended answer"
+echo "  * No technical knowledge needed — hints on every step"
 echo "============================================="
 
-SERVER_USER=$(ask "1/16 Server login user (cPanel username)" "cpuser")
-SERVER_HOST=$(ask "2/16 Server IP or domain" "your-server.com")
-SSH_PORT=$(ask "3/16 SSH port (cPanel = 22)" "22")
-SITE_DOMAIN=$(ask "4/16 Live domain, without https://" "your-domain.com")
-APP_DIR=$(ask "5/16 App folder on the server (full path)" "/home/$SERVER_USER/app")
-REPO_URL=$(ask "6/16 Git repo SSH URL (GitHub → Code → SSH)" "git@github.com:user/repo.git")
-APP_TYPE=$(ask "7/16 App type: python/node/php/static/docker" "python")
-RESTART_METHOD=$(ask "8/16 Restart: passenger/touch/systemctl/docker/php/none" "passenger")
-BUILD_CMD=$(ask "9/16 Build command (Node/static) — leave empty if none" "")
-MIGRATE_CMD=$(ask "10/16 Migration command — leave empty if none" "$( [ "$APP_TYPE" = python ] && echo '$PYTHON_BIN -m alembic upgrade head' || echo '' )")
-DB_BACKUP=$(ask "11/16 DB backup before migrate? yes/no" "no")
-DB_NAME=$(ask "12/16 DB name (if backup is yes)" "")
-DB_USER=$(ask "13/16 DB user (if backup is yes)" "")
-TELEGRAM_TOKEN=$(ask "14/16 Telegram bot token (optional, you can leave it empty)" "")
-TELEGRAM_CHAT=$(ask "15/16 Telegram chat ID (optional)" "")
-HEALTH_URL=$(ask "16/16 Health check URL (optional — Enter = skip)" "")
+# ── 1. Server basics ──────────────────────────────
+SERVER_USER=$(ask "Server login username (cPanel username)" "cpuser")
+SERVER_HOST=$(ask "Server host or IP" "your-server.com")
+SSH_PORT=$(ask "SSH port (cPanel = 22)" "22")
+SITE_DOMAIN=$(ask "Live domain, without https://" "myapp.com")
+APP_DIR=$(ask "App folder on the server (full path)" "/home/$SERVER_USER/myapp")
+echo ""
+echo "  📋 Copy from GitHub: open your repo → green Code button → SSH"
+REPO_URL=$(ask "GitHub repo SSH URL (git@github.com:...)" "git@github.com:user/repo.git")
+echo ""
 
+# ── 2. App type (restart method auto-set) ────────
+echo "  What kind of app is this?"
+echo "    python (Django/Flask/FastAPI) | node | php | static | docker"
+APP_TYPE=$(ask "App type" "python")
+case "$APP_TYPE" in
+  python) RESTART_METHOD="passenger"; WSGI_FILE="passenger_wsgi.py" ;;
+  node)   RESTART_METHOD="passenger"; WSGI_FILE="passenger_wsgi.py" ;;
+  php)    RESTART_METHOD="php";        WSGI_FILE="" ;;
+  docker) RESTART_METHOD="docker";     WSGI_FILE="" ;;
+  static) RESTART_METHOD="none";       WSGI_FILE="" ;;
+  *)      RESTART_METHOD="passenger";  WSGI_FILE="" ;;
+esac
+echo "  (restart method auto-set: $RESTART_METHOD — change later in config.sh if needed)"
+echo ""
+
+# ── 3. Optional features (all YES/NO) ────────────
+BUILD_CMD=""
+if yesno "Do you need a build step? (e.g. npm run build)" no; then
+  BUILD_CMD=$(ask "Paste your build command" "")
+fi
+
+DB_BACKUP="no"; DB_TYPE="mysql"; DB_HOST="localhost"
+DB_USER=""; DB_PASS=""; DB_NAME=""
+if yesno "Do you use a database?" no; then
+  DB_TYPE=$(ask "DB type (mysql / postgres)" "mysql")
+  DB_NAME=$(ask "DB name" "")
+  DB_USER=$(ask "DB user" "")
+  DB_PASS=$(ask "DB password (stays on the server, never committed)" "")
+  if yesno "Backup the DB before every deploy? (recommended for production)" no; then
+    DB_BACKUP="yes"
+  fi
+fi
+
+MIGRATE_CMD=""
+if yesno "Do you need database migrations on deploy? (e.g. alembic)" no; then
+  if [ "$APP_TYPE" = "python" ]; then
+    MIGRATE_CMD=$(ask "Migration command" '$PYTHON_BIN -m alembic upgrade head')
+  else
+    MIGRATE_CMD=$(ask "Paste your migration command" "")
+  fi
+fi
+
+TELEGRAM_BOT_TOKEN=""; TELEGRAM_CHAT_ID=""
+if yesno "Do you want Telegram alerts when a deploy finishes?" no; then
+  echo "  📋 Get the token from @BotFather on Telegram"
+  TELEGRAM_BOT_TOKEN=$(ask "Bot token" "")
+  TELEGRAM_CHAT_ID=$(ask "Chat ID (ask @userinfobot after messaging the bot)" "")
+fi
+
+HEALTH_URL=""
+if yesno "Do you want a health check after deploy? (recommended)" yes; then
+  HEALTH_URL=$(ask "Health URL (Enter = https://$SITE_DOMAIN/)" "")
+fi
+
+# ── 4. Write config.sh (all keys — same as config.example.sh) ──
+PYTHON_BIN="/home/$SERVER_USER/virtualenv/$SITE_DOMAIN/3.11/bin/python"
 cat > config.sh <<EOF
 # ── Deploy Kit config (generated by setup.sh — $(date '+%F %T')) ──
 SERVER_USER="$SERVER_USER"
@@ -49,26 +115,26 @@ REPO_URL="$REPO_URL"
 
 # ── Stack ──
 APP_TYPE="$APP_TYPE"
-PYTHON_BIN="/home/$SERVER_USER/virtualenv/$SITE_DOMAIN/3.11/bin/python"
+PYTHON_BIN="$PYTHON_BIN"
 NODE_BIN=""
 BUILD_CMD="$BUILD_CMD"
 MIGRATE_CMD="$MIGRATE_CMD"
 RESTART_METHOD="$RESTART_METHOD"
-WSGI_FILE="passenger_wsgi.py"
+WSGI_FILE="$WSGI_FILE"
 DOCKER_COMPOSE=""
 PHP_FPM_SERVICE=""
 
 # ── Database ──
 DB_BACKUP="$DB_BACKUP"
-DB_TYPE="mysql"
-DB_HOST="localhost"
+DB_TYPE="$DB_TYPE"
+DB_HOST="$DB_HOST"
 DB_USER="$DB_USER"
-DB_PASS=""
+DB_PASS="$DB_PASS"
 DB_NAME="$DB_NAME"
 
 # ── Notifications ──
-TELEGRAM_BOT_TOKEN="$TELEGRAM_TOKEN"
-TELEGRAM_CHAT_ID="$TELEGRAM_CHAT"
+TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN"
+TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
 
 # ── Health check (optional) ──
 HEALTH_URL="$HEALTH_URL"
@@ -80,16 +146,25 @@ TOGGLE_FLAG=""
 SKIP_WHEN_FLAG=""
 DEFAULT_BRANCH="main"
 LOG_FILE=""
+RSYNC_EXCLUDES=""
 EOF
 
 chmod 600 config.sh
+
+# ── 5. Summary + next steps ──
 echo ""
 echo "✅ config.sh created!"
 echo ""
-echo "⚠️ Now edit the remaining details in it (not asked during setup):"
-echo "   nano config.sh"
-echo "   → DB_PASS (DB password)"
-echo "   → PYTHON_BIN (if a different path)"
-echo "   → WSGI_FILE / DOCKER_COMPOSE / PHP_FPM (according to your stack)"
+echo "  ── Next step — SSH keys (1 command, copy-paste ready): ──"
+echo "     /bin/bash keygen.sh"
 echo ""
-echo "Then test: /bin/bash auto_deploy.sh main"
+echo "  keygen.sh prints 3 copy-paste blocks for GitHub:"
+echo "    1. Public key  → repo → Settings → Deploy keys"
+echo "    2. Private key → repo → Settings → Secrets → SSH_PRIVATE_KEY"
+echo "    3. Host/User/Port → Secrets (SERVER_HOST, SERVER_USER, SSH_PORT)"
+echo ""
+
+if yesno "Set up SSH keys now? (recommended — takes 1 minute)" yes; then
+  echo ""
+  /bin/bash keygen.sh
+fi
