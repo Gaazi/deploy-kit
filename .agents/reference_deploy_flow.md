@@ -61,7 +61,8 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 
 ## GitHub Actions wiring (deploy.yml.example)
 
-- Triggers on push to configured branches; `paths-ignore: ["*.md", "**/*.md"]` — doc-only pushes cost 0 runner time
+- Triggers on push to configured branches; `paths-ignore: ["*.md", "**/*.md", "docs/**"]` — doc-only pushes cost 0 runner time (workflow doesn't even start)
+- `permissions: {}` — minimal: no unnecessary GITHUB_TOKEN (faster + safer)
 - `concurrency` group — overlapping runs cancel (save minutes)
 - No checkout (fastest); SSH with private key from secrets; `BatchMode=yes`; `ConnectTimeout=10`
 - Fire-and-forget: `nohup ... &` — run completes in ~6s, deploy continues on server

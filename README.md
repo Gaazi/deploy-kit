@@ -178,10 +178,16 @@ Push (dev/demo/main) → GitHub Actions (~6s) → server deploy → Telegram ale
 ## ⚡ GitHub free limits — never run out
 
 GitHub **free plan** gives you **2,000 Actions minutes / month**. Each deploy costs ~1 min
-(VM boot + the ~6s job). So Actions mode handles roughly **2,000 deploys/month** — enough for
-most projects. Doc-only pushes cost **0** (the workflow ignores `*.md`).
+(VM boot + the ~6s job). The workflow is already **minimum-resource**:
 
-**Want to use ZERO Actions minutes?** Use the cron mode instead — the server checks the repo
+- No checkout, no build on the runner — one tiny SSH job
+- Doc-only pushes (`*.md` / `docs/**`) → **0 runner time** (workflow doesn't even start)
+- `permissions: {}` — no unnecessary token, faster + safer
+- Overlapping pushes auto-cancel (`concurrency`) — no wasted minutes
+
+So Actions mode handles roughly **2,000 deploys/month** — enough for most projects.
+
+**Want ZERO Actions minutes?** Use the cron mode instead — the server checks the repo
 itself every few minutes and deploys when there's a new commit:
 
 ```bash
@@ -197,6 +203,9 @@ itself every few minutes and deploys when there's a new commit:
 
 > **Toggle:** running both? `touch ~/.deploy_github` + `SKIP_WHEN_FLAG=1` → cron skips
 > and GitHub Actions takes over. Remove the flag → cron deploys again.
+
+> **Rule of thumb:** small project / few pushes → Actions mode is fine.
+> Many pushes / worry about the limit → `cron.sh` = unlimited, zero cost.
 
 ---
 
