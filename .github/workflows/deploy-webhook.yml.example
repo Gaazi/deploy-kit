@@ -1,15 +1,17 @@
 # GitHub Actions workflow — DEPLOY KIT (WEBHOOK, ~1-2s)
+# ============================================================
+# ⚠️ SIRF TAB USE KARO AGAR AAPNE webhook.sh CHALAYA HO (VPS only)!
 # ------------------------------------------------------------
-# Copy to your repo: .github/workflows/deploy-webhook.yml
-# Edit: branch names. Secrets needed (same value as server):
-#   DEPLOY_WEBHOOK_SECRET — the value in server config.sh
-#   DEPLOY_WEBHOOK_URL    — http://SERVER_IP:9000/webhook/deploy/
-# WHY: webhook POST is faster than SSH handshake (~1-2s).
-# ⚠️ VPS only — server must run: /bin/bash webhook.sh start
-#
-# 💡 EVEN LIGHTER (0 runner): use GitHub's NATIVE webhook instead
-#    (repo → Settings → Webhooks) — no Actions runner at all.
-#    This workflow is only needed if you want the Actions UI/log.
+# KAUN use kare:  SIRF VPS users jinhone server pe: /bin/bash webhook.sh start
+#                 chala kar listener banaya ho.
+#                 Agar yeh NAHI kiya to yeh workflow FAIL hoga.
+# KYA karta hai:  GitHub POST bhejta hai webhook.sh ko → ~1-2s deploys.
+#                 ️ NATIVE option (aur bhi behtar): GitHub → Settings →
+#                 Webhooks — usme runner bilkul nahi chalta (yeh file bhi
+#                 zaroori nahi). Yeh file sirf Actions UI/log chahiye ho to.
+# DEFAULT CHOICE: zyada tar users ko deploy.yml.example (hosted) use karna
+#                 chahiye — yeh file sirf webhook.sh wale VPS users ke liye.
+# COPY KAISE:     cp deploy-webhook.yml.example .github/workflows/deploy-webhook.yml
 # ============================================================
 
 name: Deploy (webhook)

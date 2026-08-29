@@ -131,6 +131,7 @@ nano config.sh
 | `WEBHOOK_PORT` | Webhook listener port | Number | `9000` |
 | `HEALTH_URL` | Health check URL (optional) | Full URL | `https://myapp.com/health` |
 | `HEALTH_WAIT` | Seconds to wait after restart before checking | Number | `8` |
+| `HEALTH_RETRY` | How many times to retry health check | Number | `3` |
 | `DEPLOY_KEY` | Path to the GitHub deploy key | Key file | `/home/cpuser/.ssh/deploy_key` |
 | `WORKSPACE_BASE` | Where the git workspace lives | Path | `/home/cpuser/deploy-workspace` |
 | `TOGGLE_FLAG` / `SKIP_WHEN_FLAG` | Toggle system (optional) | Flag path + `1` | — |
@@ -196,7 +197,17 @@ That's it — one key pair works both ways (server → GitHub clone + GitHub →
 #   → koi technical cheez yaad rakhne ki zaroorat nahi
 ```
 
-### Step 5: GitHub Actions setup
+### Step 5: GitHub Actions setup — KAUNSA workflow copy karo?
+
+**3 workflow files hain — sirf 1 chahiye. Zyada tar log yeh use karte hain:**
+
+| File | Kab use karo | Setup chahiye? |
+|------|--------------|----------------|
+| **`deploy.yml.example`** ✅ | **SABSE ZYADA USERS** — GitHub ka free hosted runner (2000 min/mo) | sirf 4 Secrets |
+| `deploy-selfhosted.yml.example` | sirf agar VPS pe `runner.sh` chalaya ho | runner.sh (VPS) |
+| `deploy-webhook.yml.example` | sirf agar VPS pe `webhook.sh start` kiya ho | webhook.sh (VPS) |
+
+**Default (ya samajh na aaye to): `deploy.yml.example` — yahi copy karo:**
 
 ```bash
 # In your project repo:
@@ -205,6 +216,7 @@ cp ~/deploy-kit/.github/workflows/deploy.yml.example .github/workflows/deploy.ym
 ```
 
 Edit your **branch names** in `deploy.yml` (default: dev/demo/main).
+Agar self-hosted/webhook use karte ho to usi naam ka file copy karo — warna deploy.yml hi sahi hai.
 
 ### Step 6: Push it 🎉
 
