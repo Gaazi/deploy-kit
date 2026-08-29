@@ -2,14 +2,14 @@
 # ------------------------------------------------------------
 # Copy this file to YOUR repo: .github/workflows/deploy.yml
 # Fill: branch names + server secrets (see README).
-# Fire-and-forget: GitHub run ~6s, deploy server par background.
+# Fire-and-forget: GitHub run ~6s, deploy runs in the background on the server.
 # ============================================================
 
 name: "Deploy"
 
 on:
   push:
-    branches: ["dev", "demo", "main"]   # ← apne branches likho
+    branches: ["dev", "demo", "main"]   # ← edit: your branch names
   workflow_dispatch:
 
 concurrency:

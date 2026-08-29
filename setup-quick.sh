@@ -26,7 +26,7 @@ echo "    REPO_URL=git@github.com:user/repo.git"
 echo "============================================================"
 echo ""
 
-# ── User se paste lo (Ctrl+D = khatam) ──
+# ── Read pasted input (Ctrl+D = done) ──
 INPUT="$(cat)"
 
 # ── Defaults ──
@@ -37,36 +37,66 @@ SITE_DOMAIN="your-domain.com"
 APP_DIR=""
 REPO_URL=""
 APP_TYPE="python"
-RESTART_METHOD="passenger"
+PYTHON_BIN=""
+NODE_BIN=""
 BUILD_CMD=""
 MIGRATE_CMD=""
+RESTART_METHOD="passenger"
+WSGI_FILE="passenger_wsgi.py"
+DOCKER_COMPOSE=""
+PHP_FPM_SERVICE=""
 DB_BACKUP="no"
-DB_NAME=""
+DB_TYPE="mysql"
+DB_HOST="localhost"
 DB_USER=""
+DB_PASS=""
+DB_NAME=""
 TELEGRAM_BOT_TOKEN=""
 TELEGRAM_CHAT_ID=""
 HEALTH_URL=""
+DEPLOY_KEY=""
+WORKSPACE_BASE="/home/$SERVER_USER/deploy-workspace"
+TOGGLE_FLAG=""
+SKIP_WHEN_FLAG=""
+DEFAULT_BRANCH="main"
+LOG_FILE=""
+RSYNC_EXCLUDES=""
 
-# ── Parse pasted KEY=VALUE lines ──
+# ── Parse pasted KEY=VALUE lines (all keys, including advanced) ──
 while IFS='=' read -r key val; do
   [ -z "$key" ] && continue
   case "$key" in
-    SERVER_USER)   SERVER_USER="$val" ;;
-    SERVER_HOST)   SERVER_HOST="$val" ;;
-    SSH_PORT)      SSH_PORT="$val" ;;
-    SITE_DOMAIN)   SITE_DOMAIN="$val" ;;
-    APP_DIR)       APP_DIR="$val" ;;
-    REPO_URL)      REPO_URL="$val" ;;
-    APP_TYPE)      APP_TYPE="$val" ;;
-    RESTART_METHOD) RESTART_METHOD="$val" ;;
-    BUILD_CMD)     BUILD_CMD="$val" ;;
-    MIGRATE_CMD)   MIGRATE_CMD="$val" ;;
-    DB_BACKUP)     DB_BACKUP="$val" ;;
-    DB_NAME)       DB_NAME="$val" ;;
-    DB_USER)       DB_USER="$val" ;;
+    SERVER_USER)       SERVER_USER="$val" ;;
+    SERVER_HOST)       SERVER_HOST="$val" ;;
+    SSH_PORT)          SSH_PORT="$val" ;;
+    SITE_DOMAIN)       SITE_DOMAIN="$val" ;;
+    APP_DIR)           APP_DIR="$val" ;;
+    REPO_URL)          REPO_URL="$val" ;;
+    APP_TYPE)          APP_TYPE="$val" ;;
+    PYTHON_BIN)        PYTHON_BIN="$val" ;;
+    NODE_BIN)          NODE_BIN="$val" ;;
+    BUILD_CMD)         BUILD_CMD="$val" ;;
+    MIGRATE_CMD)       MIGRATE_CMD="$val" ;;
+    RESTART_METHOD)    RESTART_METHOD="$val" ;;
+    WSGI_FILE)         WSGI_FILE="$val" ;;
+    DOCKER_COMPOSE)    DOCKER_COMPOSE="$val" ;;
+    PHP_FPM_SERVICE)   PHP_FPM_SERVICE="$val" ;;
+    DB_BACKUP)         DB_BACKUP="$val" ;;
+    DB_TYPE)           DB_TYPE="$val" ;;
+    DB_HOST)           DB_HOST="$val" ;;
+    DB_USER)           DB_USER="$val" ;;
+    DB_PASS)           DB_PASS="$val" ;;
+    DB_NAME)           DB_NAME="$val" ;;
     TELEGRAM_BOT_TOKEN) TELEGRAM_BOT_TOKEN="$val" ;;
-    TELEGRAM_CHAT_ID)   TELEGRAM_CHAT_ID="$val" ;;
-    HEALTH_URL)    HEALTH_URL="$val" ;;
+    TELEGRAM_CHAT_ID)  TELEGRAM_CHAT_ID="$val" ;;
+    HEALTH_URL)        HEALTH_URL="$val" ;;
+    DEPLOY_KEY)        DEPLOY_KEY="$val" ;;
+    WORKSPACE_BASE)    WORKSPACE_BASE="$val" ;;
+    TOGGLE_FLAG)       TOGGLE_FLAG="$val" ;;
+    SKIP_WHEN_FLAG)    SKIP_WHEN_FLAG="$val" ;;
+    DEFAULT_BRANCH)    DEFAULT_BRANCH="$val" ;;
+    LOG_FILE)          LOG_FILE="$val" ;;
+    RSYNC_EXCLUDES)    RSYNC_EXCLUDES="$val" ;;
   esac
 done <<< "$INPUT"
 
@@ -75,7 +105,9 @@ if [ -z "$APP_DIR" ] || [ -z "$REPO_URL" ]; then
   echo "❌ APP_DIR and REPO_URL are required — paste these 2 and run again."
   exit 1
 fi
-[ "$APP_DIR" = "your-domain.com" ] && APP_DIR="/home/$SERVER_USER/app"
+
+# PYTHON_BIN default follows the pasted SERVER_USER/SITE_DOMAIN unless overridden
+PYTHON_BIN="${PYTHON_BIN:-/home/$SERVER_USER/virtualenv/$SITE_DOMAIN/3.11/bin/python}"
 
 # ── Create config.sh ──
 cat > config.sh <<EOF
@@ -89,21 +121,21 @@ REPO_URL="$REPO_URL"
 
 # ── Stack ──
 APP_TYPE="$APP_TYPE"
-PYTHON_BIN="/home/$SERVER_USER/virtualenv/$SITE_DOMAIN/3.11/bin/python"
-NODE_BIN=""
+PYTHON_BIN="$PYTHON_BIN"
+NODE_BIN="$NODE_BIN"
 BUILD_CMD="$BUILD_CMD"
 MIGRATE_CMD="$MIGRATE_CMD"
 RESTART_METHOD="$RESTART_METHOD"
-WSGI_FILE="passenger_wsgi.py"
-DOCKER_COMPOSE=""
-PHP_FPM_SERVICE=""
+WSGI_FILE="$WSGI_FILE"
+DOCKER_COMPOSE="$DOCKER_COMPOSE"
+PHP_FPM_SERVICE="$PHP_FPM_SERVICE"
 
 # ── Database ──
 DB_BACKUP="$DB_BACKUP"
-DB_TYPE="mysql"
-DB_HOST="localhost"
+DB_TYPE="$DB_TYPE"
+DB_HOST="$DB_HOST"
 DB_USER="$DB_USER"
-DB_PASS=""
+DB_PASS="$DB_PASS"
 DB_NAME="$DB_NAME"
 
 # ── Notifications ──
@@ -114,12 +146,13 @@ TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
 HEALTH_URL="$HEALTH_URL"
 
 # ── Git / Advanced ──
-DEPLOY_KEY=""
-WORKSPACE_BASE="/home/$SERVER_USER/deploy-workspace"
-TOGGLE_FLAG=""
-SKIP_WHEN_FLAG=""
-DEFAULT_BRANCH="main"
-LOG_FILE=""
+DEPLOY_KEY="$DEPLOY_KEY"
+WORKSPACE_BASE="$WORKSPACE_BASE"
+TOGGLE_FLAG="$TOGGLE_FLAG"
+SKIP_WHEN_FLAG="$SKIP_WHEN_FLAG"
+DEFAULT_BRANCH="$DEFAULT_BRANCH"
+LOG_FILE="$LOG_FILE"
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES"
 EOF
 
 chmod 600 config.sh

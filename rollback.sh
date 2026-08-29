@@ -2,18 +2,19 @@
 # ============================================================
 # DEPLOY KIT — rollback.sh (GENERIC)
 # ------------------------------------------------------------
-# Pichle commit par wapas jao (ya kisi bhi SHA par).
+# Go back to a previous commit (or any SHA).
 #   usage: /bin/bash rollback.sh <branch> [commit-sha]
-#   agar sha na do to last deployed SHA par wapas.
+#   no sha given → back to the last deployed SHA.
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
 [ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE" || { echo "❌ config.sh not found"; exit 1; }
 
-BRANCH="${1:-main}"
+BRANCH="${1:-${DEFAULT_BRANCH:-main}}"
 APP_DIR="${APP_DIR:-/home/$SERVER_USER/app}"
 WORKSPACE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}/$BRANCH"
+LOG="${LOG_FILE:-/home/$SERVER_USER/deploy.log}"
 TARGET_SHA="${2:-$(cat "$WORKSPACE/.deployed_sha" 2>/dev/null)}"
 
 if [ -z "$TARGET_SHA" ]; then
@@ -22,17 +23,34 @@ if [ -z "$TARGET_SHA" ]; then
 fi
 
 echo "⏪ Rolling back $BRANCH to $TARGET_SHA"
+echo "$(date '+%F %T'): Rollback $BRANCH to $TARGET_SHA" >> "$LOG"
 
 GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i $DEPLOY_KEY -o StrictHostKeyChecking=no}" \
-  git -C "$WORKSPACE" fetch origin "$BRANCH" >> /dev/null 2>&1
-git -C "$WORKSPACE" checkout "$TARGET_SHA" >> /dev/null 2>&1
+  git -C "$WORKSPACE" fetch origin "$BRANCH" >> "$LOG" 2>&1
 
-rsync -az --delete \
-  --exclude='/.git/' --exclude='.env' --exclude='*.db' --exclude='node_modules/' \
-  --exclude='venv/' --exclude='.venv/' --exclude='media/' --exclude='backups/' \
-  "$WORKSPACE/" "$APP_DIR/" >> /dev/null 2>&1
+# Safety guard: the target SHA must exist locally before we touch the app dir.
+if ! git -C "$WORKSPACE" rev-parse --verify -q "$TARGET_SHA" >/dev/null 2>&1; then
+  echo "❌ SHA $TARGET_SHA not found in workspace — rollback aborted, app untouched" | tee -a "$LOG"
+  exit 1
+fi
 
-# restore pre-migration DB dump agar ho
+git -C "$WORKSPACE" checkout "$TARGET_SHA" >> "$LOG" 2>&1
+
+# Same excludes as auto_deploy.sh so the app dir stays consistent.
+RSYNC_ARGS=(--exclude='/.git/' --exclude='.env' --exclude='*.db' --exclude='*.sqlite3' \
+  --exclude='__pycache__/' --exclude='*.pyc' --exclude='node_modules/' \
+  --exclude='venv/' --exclude='.venv/' --exclude='*.log' --exclude='media/' \
+  --exclude='backups/' --exclude='tests/')
+for ex in $RSYNC_EXCLUDES; do RSYNC_ARGS+=(--exclude="$ex"); done
+rsync -az --delete "${RSYNC_ARGS[@]}" "$WORKSPACE/" "$APP_DIR/" >> "$LOG" 2>&1
+
+# rebuild (only if the app has a build step)
+if [ -n "$BUILD_CMD" ]; then
+  echo "🔨 Rebuilding: $BUILD_CMD"
+  (cd "$APP_DIR" && eval "$BUILD_CMD") >> "$LOG" 2>&1
+fi
+
+# restore pre-migration DB dump if present
 LATEST_DUMP="$(ls -1t "$APP_DIR/backups/predeploy/"*.sql 2>/dev/null | head -1)"
 if [ -n "$LATEST_DUMP" ] && [ -n "$DB_NAME" ] && [ -n "$DB_USER" ]; then
   echo "🔄 Restoring DB: $LATEST_DUMP"
@@ -47,7 +65,15 @@ fi
 case "$RESTART_METHOD" in
   passenger) mkdir -p "$APP_DIR/tmp" && touch "$APP_DIR/tmp/restart.txt" ;;
   touch)     touch "$APP_DIR/restart.txt" ;;
-  systemctl) systemctl restart "$SITE_DOMAIN" 2>/dev/null || true ;;
+  systemctl) systemctl restart "$SITE_DOMAIN" 2>>"$LOG" || true ;;
+  docker)    if [ -n "$DOCKER_COMPOSE" ]; then
+               (cd "$APP_DIR" && docker compose -f "$DOCKER_COMPOSE" up -d --build) >> "$LOG" 2>&1
+             else
+               (cd "$APP_DIR" && docker compose up -d --build) >> "$LOG" 2>&1
+             fi ;;
+  php)       if [ -n "$PHP_FPM_SERVICE" ]; then
+               systemctl reload "$PHP_FPM_SERVICE" 2>>"$LOG" || service "$PHP_FPM_SERVICE" reload 2>>"$LOG" || true
+             fi ;;
   ""|none)   : ;;
 esac
 
