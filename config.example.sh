@@ -18,19 +18,23 @@ APP_DIR="/home/$SERVER_USER/your-app" # live app directory (REQUIRED)
 REPO_URL="git@github.com:YOUR_USER/YOUR_REPO.git"  # your git repo (REQUIRED)
 
 # ── App Type (choose your stack) ────────────────────────────
-APP_TYPE="python"                     # python | node | php | static | docker
+APP_TYPE="python"                     # python | node | php | wordpress | ruby | java | go | static | docker
 PYTHON_BIN="/home/$SERVER_USER/virtualenv/your-app/3.11/bin/python"  # python type
 NODE_BIN=""                           # node type: /path/to/node
 BUILD_CMD=""                          # build command (npm run build etc.) — leave "" if none
 MIGRATE_CMD="$PYTHON_BIN -m alembic upgrade head"   # migration command — "" if none
-RESTART_METHOD="passenger"            # passenger | touch | systemctl | docker | none
+RESTART_METHOD="passenger"            # passenger | touch | systemctl | pm2 | supervisor | docker | php | none
+SERVICE_NAME=""                       # systemctl type: service name ("" = SITE_DOMAIN)
+PM2_APP="all"                         # pm2 type: pm2 app name or "all"
+SUPERVISOR_APP="all"                  # supervisor type: app name or "all"
 WSGI_FILE="passenger_wsgi.py"         # passenger type: your wsgi entry
 DOCKER_COMPOSE=""                     # docker type: path to docker-compose.yml ("" = not set)
 PHP_FPM_SERVICE=""                    # php type: php-fpm service name ("" = not set)
+APP_SUBDIR=""                         # monorepo: deploy only this subfolder ("" = whole repo)
 
 # ── Database (optional — backup before migrate) ─────────────
 DB_BACKUP="no"                        # yes | no
-DB_TYPE="mysql"                       # mysql | postgres
+DB_TYPE="mysql"                       # mysql | postgres | sqlite (sqlite: DB_NAME = file path inside APP_DIR)
 DB_HOST="localhost"
 DB_USER=""
 DB_PASS=""

@@ -45,6 +45,7 @@ Any change → ALL 3. Verify with `diff -q`.
 - `test.sh` self-test added: bash -n + missing-config/required errors + full local file:// integration test (deploy → skip → new commit → rollback). Run before committing. NOTE: rsync quick-check = size+mtime — test keeps file sizes different between commits to stay deterministic.
 - LITE workflow: deploy.yml.example trimmed — no checkout, no build, no echo/rm noise; 1 tiny SSH job (fire-and-forget, ~6s job time). Runner cost = VM boot (~1 min) + 6s per push. Zero-Actions alternative already exists: cron mode (TOGGLE_FLAG/SKIP_WHEN_FLAG).
 - Beginner pass: setup.sh rewritten as YES/NO wizard (Enter = recommended; restart method auto-set from APP_TYPE; DB_PASS now asked; auto-runs keygen.sh at the end). NEW keygen.sh — ONE key pair both ways (server→GitHub deploy key + GitHub→server authorized_keys), sets DEPLOY_KEY in config.sh, prints 3 copy-paste blocks (Deploy key, SSH_PRIVATE_KEY, SERVER_HOST/USER/PORT secrets). test.sh now covers keygen too (15 checks).
+- All-stacks pass: restart methods +pm2/+supervisor (non-fatal `|| true`), SERVICE_NAME for systemctl (default SITE_DOMAIN), APP_SUBDIR for monorepos (abort if missing), sqlite DB backup/restore (file copy), wizard covers 9 app types (python/node/php/wordpress/ruby/java/go/static/docker) with per-type build/migrate hints; test.sh = 18 checks.
 
 ## Troubleshooting quick
 - `config.sh not found` → copy example first

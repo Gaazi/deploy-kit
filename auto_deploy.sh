@@ -94,7 +94,14 @@ RSYNC_ARGS=(--exclude='/.git/' --exclude='.env' --exclude='*.db' --exclude='*.sq
   --exclude='venv/' --exclude='.venv/' --exclude='*.log' --exclude='media/' \
   --exclude='backups/' --exclude='tests/')
 for ex in $RSYNC_EXCLUDES; do RSYNC_ARGS+=(--exclude="$ex"); done
-rsync -az --delete "${RSYNC_ARGS[@]}" "$WORKSPACE/" "$APP_DIR/" >> "$LOG" 2>&1
+# APP_SUBDIR (optional): deploy only one subfolder (monorepos)
+SRC_DIR="$WORKSPACE"
+[ -n "$APP_SUBDIR" ] && SRC_DIR="$WORKSPACE/$APP_SUBDIR"
+if [ ! -d "$SRC_DIR" ]; then
+  echo "❌ APP_SUBDIR not found: $SRC_DIR — deploy aborted, app untouched" | tee -a "$LOG"
+  exit 1
+fi
+rsync -az --delete "${RSYNC_ARGS[@]}" "$SRC_DIR/" "$APP_DIR/" >> "$LOG" 2>&1
 
 # ── 3. Build (if configured) ────────────────────────────────
 if [ -n "$BUILD_CMD" ]; then
@@ -117,6 +124,10 @@ if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ] && [ -n "$DB_USER" ]; then
       > "$BK_DIR/${SITE_DOMAIN}_${TS}.sql" 2>>"$LOG" \
       && ls -1t "$BK_DIR"/*.sql 2>/dev/null | tail -n +8 | xargs -r rm -f 2>/dev/null
     log "DB backup: $BK_DIR/${SITE_DOMAIN}_${TS}.sql (last 7 kept)"
+  elif [ "$DB_TYPE" = "sqlite" ] && [ -f "$APP_DIR/$DB_NAME" ]; then
+    cp "$APP_DIR/$DB_NAME" "$BK_DIR/${SITE_DOMAIN}_${TS}.db" 2>>"$LOG" \
+      && ls -1t "$BK_DIR"/*.db 2>/dev/null | tail -n +8 | xargs -r rm -f 2>/dev/null
+    log "DB backup (sqlite): $BK_DIR/${SITE_DOMAIN}_${TS}.db (last 7 kept)"
   fi
 fi
 
@@ -128,18 +139,20 @@ fi
 
 # ── 6. Restart (optional — "" / "none" = skip) ───────────────
 case "$RESTART_METHOD" in
-  passenger) mkdir -p "$APP_DIR/tmp" && touch "$APP_DIR/tmp/restart.txt" ;;
-  touch)     touch "$APP_DIR/restart.txt" ;;
-  systemctl) systemctl restart "$SITE_DOMAIN" 2>>"$LOG" || true ;;
-  docker)    if [ -n "$DOCKER_COMPOSE" ]; then
-               (cd "$APP_DIR" && docker compose -f "$DOCKER_COMPOSE" down && docker compose -f "$DOCKER_COMPOSE" up -d --build) >> "$LOG" 2>&1
-             else
-               (cd "$APP_DIR" && docker compose up -d --build) >> "$LOG" 2>&1
-             fi ;;
-  php)       if [ -n "$PHP_FPM_SERVICE" ]; then
-               systemctl reload "$PHP_FPM_SERVICE" 2>>"$LOG" || service "$PHP_FPM_SERVICE" reload 2>>"$LOG" || true
-             fi ;;
-  ""|none)   : ;;
+  passenger)  mkdir -p "$APP_DIR/tmp" && touch "$APP_DIR/tmp/restart.txt" ;;
+  touch)      touch "$APP_DIR/restart.txt" ;;
+  systemctl)  systemctl restart "${SERVICE_NAME:-$SITE_DOMAIN}" 2>>"$LOG" || true ;;
+  pm2)        pm2 restart "${PM2_APP:-all}" >> "$LOG" 2>&1 || true ;;
+  supervisor) supervisorctl restart "${SUPERVISOR_APP:-all}" >> "$LOG" 2>&1 || true ;;
+  docker)     if [ -n "$DOCKER_COMPOSE" ]; then
+                (cd "$APP_DIR" && docker compose -f "$DOCKER_COMPOSE" down && docker compose -f "$DOCKER_COMPOSE" up -d --build) >> "$LOG" 2>&1
+              else
+                (cd "$APP_DIR" && docker compose up -d --build) >> "$LOG" 2>&1
+              fi ;;
+  php)        if [ -n "$PHP_FPM_SERVICE" ]; then
+                systemctl reload "$PHP_FPM_SERVICE" 2>>"$LOG" || service "$PHP_FPM_SERVICE" reload 2>>"$LOG" || true
+              fi ;;
+  ""|none)    : ;;
 esac
 [ -n "$RESTART_METHOD" ] && [ "$RESTART_METHOD" != "none" ] && log "Restart done ($RESTART_METHOD)"
 

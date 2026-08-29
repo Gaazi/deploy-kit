@@ -19,26 +19,30 @@
 | Key | What | Example |
 |-----|------|---------|
 | `SITE_DOMAIN` | Live domain (no https://) | `myapp.com` |
-| `APP_TYPE` | python \| node \| php \| static \| docker | `python` |
+| `APP_TYPE` | python \| node \| php \| wordpress \| ruby \| java \| go \| static \| docker | `python` |
 | `PYTHON_BIN` | Python binary (virtualenv) | `/home/cpuser/virtualenv/myapp/3.11/bin/python` |
 | `NODE_BIN` | Node binary (node type) | `""` |
 | `BUILD_CMD` | Build command (Node/static) — `""` = skip | `npm run build` |
 | `MIGRATE_CMD` | Migration command — `""` = skip | `$PYTHON_BIN -m alembic upgrade head` |
-| `RESTART_METHOD` | passenger \| touch \| systemctl \| docker \| php \| none/`""` | `passenger` |
+| `RESTART_METHOD` | passenger \| touch \| systemctl \| pm2 \| supervisor \| docker \| php \| none/`""` | `passenger` |
+| `SERVICE_NAME` | systemctl: service name — `""` = `SITE_DOMAIN` | `myapp.service` |
+| `PM2_APP` | pm2: app name — `all` restarts everything (missing pm2 = no crash) | `all` |
+| `SUPERVISOR_APP` | supervisor: app name — `all` (missing supervisorctl = no crash) | `all` |
 | `WSGI_FILE` | WSGI entry (passenger, Python) | `passenger_wsgi.py` |
 | `DOCKER_COMPOSE` | docker-compose path (docker type; `""` = default) | `docker-compose.yml` |
 | `PHP_FPM_SERVICE` | php-fpm service name (php type; `""` = skip) | `php8.2-fpm` |
+| `APP_SUBDIR` | Monorepo: deploy only this subfolder — `""` = whole repo. Missing subfolder → deploy aborts safely | `web/` |
 
 ## Database (optional — used only when DB_BACKUP=yes)
 | Key | What | Example |
 |-----|------|---------|
 | `DB_BACKUP` | yes \| no (backup before migrate) | `yes` |
-| `DB_TYPE` | mysql \| postgres | `mysql` |
-| `DB_HOST` | DB host | `localhost` |
-| `DB_USER` / `DB_PASS` | DB credentials | — |
-| `DB_NAME` | DB name | `myapp_db` |
+| `DB_TYPE` | mysql \| postgres \| sqlite | `mysql` |
+| `DB_HOST` | DB host (not for sqlite) | `localhost` |
+| `DB_USER` / `DB_PASS` | DB credentials (not for sqlite) | — |
+| `DB_NAME` | DB name (sqlite: file path inside APP_DIR) | `myapp_db` |
 
-Backup behavior: dumps to `$APP_DIR/backups/predeploy/`, keeps last 7, `--single-transaction` for mysql.
+Backup behavior: dumps to `$APP_DIR/backups/predeploy/`, keeps last 7, `--single-transaction` for mysql. sqlite = copy of the `.db` file.
 
 ## Notifications (optional)
 | Key | What |

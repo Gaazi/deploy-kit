@@ -79,16 +79,20 @@ nano config.sh
 | `SITE_DOMAIN` | Your live domain | Domain (without https://) | `myapp.com` |
 | `APP_DIR` | Full app folder path on the server | App directory | `/home/cpuser/myapp` |
 | `REPO_URL` | GitHub repo (Settings → SSH clone) | Repo SSH URL | `git@github.com:user/repo.git` |
-| `APP_TYPE` | Your stack | python/node/php/static/docker | `python` |
+| `APP_TYPE` | Your stack | python/node/php/wordpress/ruby/java/go/static/docker | `python` |
 | `PYTHON_BIN` | Python path on the server (virtualenv) | Python binary | `/home/cpuser/virtualenv/myapp/3.11/bin/python` |
 | `BUILD_CMD` | Build command (Node/static) | Or leave empty `""` | `npm run build` |
 | `MIGRATE_CMD` | DB migration command | Or leave empty `""` | `$PYTHON_BIN -m alembic upgrade head` |
-| `RESTART_METHOD` | How the app restarts | passenger/touch/systemctl/docker/php/none | `passenger` |
+| `RESTART_METHOD` | How the app restarts | passenger/touch/systemctl/pm2/supervisor/docker/php/none | `passenger` |
+| `SERVICE_NAME` | systemctl: service name | `""` = uses `SITE_DOMAIN` | `myapp.service` |
+| `PM2_APP` | pm2: app name (Node on VPS) | `all` restarts everything | `myapp` |
+| `SUPERVISOR_APP` | supervisor: app name (VPS) | `all` | `myapp` |
 | `WSGI_FILE` | The Passenger one (Python) | WSGI file | `passenger_wsgi.py` |
 | `DOCKER_COMPOSE` | Docker project | Compose file path | `docker-compose.yml` |
 | `PHP_FPM_SERVICE` | PHP project | php-fpm service name | `php8.2-fpm` |
+| `APP_SUBDIR` | Monorepo: deploy only this subfolder | `""` = whole repo | `web/` |
 | `DB_BACKUP` | Want a DB backup? | yes/no | `yes` |
-| `DB_TYPE` / `DB_HOST` / `DB_USER` / `DB_PASS` / `DB_NAME` | Server DB panel | DB details | `mysql` / `localhost` / user / pass / name |
+| `DB_TYPE` / `DB_HOST` / `DB_USER` / `DB_PASS` / `DB_NAME` | Server DB panel (sqlite: `DB_NAME` = file path in app folder) | DB details | `mysql` / `localhost` / user / pass / name |
 | `TELEGRAM_BOT_TOKEN` | From @BotFather (optional) | Token | `123:ABC...` |
 | `TELEGRAM_CHAT_ID` | Message from the bot on Telegram (optional) | Chat ID | `-100123...` |
 | `HEALTH_URL` | Health check URL (optional) | Full URL | `https://myapp.com/health` |
@@ -100,6 +104,23 @@ nano config.sh
 
 **Rule:** Anything that is **not** in your project → leave it as `""` (empty). The script will skip it automatically.
 **Only 2 are required:** `REPO_URL` + `APP_DIR`. Everything else is **optional** — backup, build, migrate, restart, health check, Telegram, toggle — whatever is empty gets skipped.
+
+#### 🧰 Every stack — what to put in config (cheat sheet)
+
+| Stack | `BUILD_CMD` | `MIGRATE_CMD` | `RESTART_METHOD` |
+|-------|------------|--------------|------------------|
+| **Python** (Django/Flask/FastAPI) | `pip install -r requirements.txt` (optional) | `$PYTHON_BIN -m alembic upgrade head` | `passenger` (cPanel) |
+| **Node** (Express/Nest/Nuxt/Next) | `npm install && npm run build` | — | `passenger` (cPanel) / `pm2` (VPS) |
+| **PHP** (Laravel/CodeIgniter) | `composer install --no-dev` (optional) | `php artisan migrate` (optional) | `php` (or `none`) |
+| **WordPress** | — (wp-content only via `APP_SUBDIR` if monorepo) | — | `php` (or `none`) |
+| **Ruby on Rails** | `bundle install` | `bundle exec rails db:migrate` | `passenger` |
+| **Java** (Spring Boot) | `mvn package -DskipTests` (then run the jar) | — | `systemctl` |
+| **Go** | `go build -o app .` | — | `systemctl` |
+| **Docker** (any) | — (compose builds it) | — | `docker` |
+| **Static HTML / SPA** | `npm run build` (if SPA) | — | `none` |
+
+> `BUILD_CMD` runs before the app starts — anything can go there (deps install, compile, collectstatic...).
+> Monorepo? Set `APP_SUBDIR="web/"` to deploy only that folder. Database SQLite? `DB_TYPE=sqlite` + `DB_NAME=path/to/app.db`.
 
 ### Step 3: Permissions + Test
 

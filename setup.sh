@@ -48,33 +48,55 @@ echo "  📋 Copy from GitHub: open your repo → green Code button → SSH"
 REPO_URL=$(ask "GitHub repo SSH URL (git@github.com:...)" "git@github.com:user/repo.git")
 echo ""
 
-# ── 2. App type (restart method auto-set) ────────
+# ── 2. App type (restart method + command hints auto-set) ──
 echo "  What kind of app is this?"
-echo "    python (Django/Flask/FastAPI) | node | php | static | docker"
+echo "    python | node | php | wordpress | ruby | java | go | static | docker"
 APP_TYPE=$(ask "App type" "python")
+BUILD_HINT=""; MIGRATE_HINT=""; RESTART_METHOD="passenger"; WSGI_FILE=""
 case "$APP_TYPE" in
-  python) RESTART_METHOD="passenger"; WSGI_FILE="passenger_wsgi.py" ;;
-  node)   RESTART_METHOD="passenger"; WSGI_FILE="passenger_wsgi.py" ;;
-  php)    RESTART_METHOD="php";        WSGI_FILE="" ;;
-  docker) RESTART_METHOD="docker";     WSGI_FILE="" ;;
-  static) RESTART_METHOD="none";       WSGI_FILE="" ;;
-  *)      RESTART_METHOD="passenger";  WSGI_FILE="" ;;
+  python)    RESTART_METHOD="passenger"; WSGI_FILE="passenger_wsgi.py"; MIGRATE_HINT='$PYTHON_BIN -m alembic upgrade head' ;;
+  node)      RESTART_METHOD="passenger"; WSGI_FILE="passenger_wsgi.py"; BUILD_HINT="npm install && npm run build" ;;
+  php)       RESTART_METHOD="php" ;;
+  wordpress) RESTART_METHOD="php" ;;
+  ruby)      RESTART_METHOD="passenger"; BUILD_HINT="bundle install"; MIGRATE_HINT="bundle exec rails db:migrate" ;;
+  java)      RESTART_METHOD="systemctl"; BUILD_HINT="mvn package -DskipTests" ;;
+  go)        RESTART_METHOD="systemctl"; BUILD_HINT="go build -o app ." ;;
+  docker)    RESTART_METHOD="docker" ;;
+  static)    RESTART_METHOD="none" ;;
+  *)         RESTART_METHOD="passenger" ;;
 esac
 echo "  (restart method auto-set: $RESTART_METHOD — change later in config.sh if needed)"
+[ -n "$BUILD_HINT" ] && echo "  💡 $APP_TYPE tip: build command → $BUILD_HINT"
+[ -n "$MIGRATE_HINT" ] && echo "  💡 $APP_TYPE tip: migration command → $MIGRATE_HINT"
+echo ""
+
+# ── 2b. Restart method details (only for the chosen method) ──
+SERVICE_NAME=""; PM2_APP="all"; SUPERVISOR_APP="all"; PHP_FPM_SERVICE=""
+if [ "$RESTART_METHOD" = "systemctl" ]; then
+  SERVICE_NAME=$(ask "systemd service name (from: systemctl list-units)" "$SITE_DOMAIN")
+elif [ "$RESTART_METHOD" = "php" ]; then
+  PHP_FPM_SERVICE=$(ask "php-fpm service name (Enter = skip reload)" "")
+fi
+
+# ── 2c. Monorepo subfolder (optional) ──
+APP_SUBDIR=""
+if yesno "Is your app in a subfolder of the repo? (monorepo — deploy only that folder)" no; then
+  APP_SUBDIR=$(ask "Subfolder path (relative to repo root)" "")
+fi
 echo ""
 
 # ── 3. Optional features (all YES/NO) ────────────
 BUILD_CMD=""
 if yesno "Do you need a build step? (e.g. npm run build)" no; then
-  BUILD_CMD=$(ask "Paste your build command" "")
+  BUILD_CMD=$(ask "Paste your build command" "$BUILD_HINT")
 fi
 
 DB_BACKUP="no"; DB_TYPE="mysql"; DB_HOST="localhost"
 DB_USER=""; DB_PASS=""; DB_NAME=""
 if yesno "Do you use a database?" no; then
-  DB_TYPE=$(ask "DB type (mysql / postgres)" "mysql")
-  DB_NAME=$(ask "DB name" "")
-  DB_USER=$(ask "DB user" "")
+  DB_TYPE=$(ask "DB type (mysql / postgres / sqlite)" "mysql")
+  DB_NAME=$(ask "DB name (sqlite: file path inside the app folder)" "")
+  DB_USER=$(ask "DB user (not needed for sqlite)" "")
   DB_PASS=$(ask "DB password (stays on the server, never committed)" "")
   if yesno "Backup the DB before every deploy? (recommended for production)" no; then
     DB_BACKUP="yes"
@@ -83,11 +105,7 @@ fi
 
 MIGRATE_CMD=""
 if yesno "Do you need database migrations on deploy? (e.g. alembic)" no; then
-  if [ "$APP_TYPE" = "python" ]; then
-    MIGRATE_CMD=$(ask "Migration command" '$PYTHON_BIN -m alembic upgrade head')
-  else
-    MIGRATE_CMD=$(ask "Paste your migration command" "")
-  fi
+  MIGRATE_CMD=$(ask "Migration command" "$MIGRATE_HINT")
 fi
 
 TELEGRAM_BOT_TOKEN=""; TELEGRAM_CHAT_ID=""
@@ -120,9 +138,13 @@ NODE_BIN=""
 BUILD_CMD="$BUILD_CMD"
 MIGRATE_CMD="$MIGRATE_CMD"
 RESTART_METHOD="$RESTART_METHOD"
+SERVICE_NAME="$SERVICE_NAME"
+PM2_APP="$PM2_APP"
+SUPERVISOR_APP="$SUPERVISOR_APP"
 WSGI_FILE="$WSGI_FILE"
 DOCKER_COMPOSE=""
-PHP_FPM_SERVICE=""
+PHP_FPM_SERVICE="$PHP_FPM_SERVICE"
+APP_SUBDIR="$APP_SUBDIR"
 
 # ── Database ──
 DB_BACKUP="$DB_BACKUP"
