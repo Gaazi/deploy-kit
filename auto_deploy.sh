@@ -8,15 +8,15 @@
 # Flow: git fetch → rsync → [build] → [db backup] → [migrate]
 #       → [restart] → [health check] → [telegram]
 #
-# [ ] = optional — config mein khaali chhor do to skip ho jata hai.
-# Koi project-specific info nahi — sab config.sh se aata hai.
+# [ ] = optional — leave empty in config to skip.
+# No project-specific info — everything comes from config.sh.
 # ============================================================
 
 # ── Config load ─────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
 if [ ! -f "$CONFIG_FILE" ]; then
-  echo "❌ config.sh nahi mila — pehle: cp config.example.sh config.sh"
+  echo "❌ config.sh not found — first run: cp config.example.sh config.sh"
   exit 1
 fi
 source "$CONFIG_FILE"
@@ -27,9 +27,9 @@ WORKSPACE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}/$BRANCH"
 LOG="${LOG_FILE:-/home/$SERVER_USER/deploy.log}"
 NOW="$(date '+%F %T')"
 
-# ── Required check (sirf yeh 2 zaroori hain — baqi sab optional) ─
+# ── Required check (only these 2 required — rest optional) ─
 if [ -z "$REPO_URL" ] || [ -z "$APP_DIR" ]; then
-  echo "❌ config.sh mein REPO_URL aur APP_DIR zaroori hain — baqi sab optional."
+  echo "❌ config.sh: REPO_URL and APP_DIR are required — everything else is optional."
   exit 1
 fi
 
@@ -139,7 +139,7 @@ if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
 <code>${NEW_SHA:0:10}</code>"
     log "Health OK"
   else
-    notify "❌ <b>Deploy done but health FAILED</b> ($SITE_DOMAIN) — rollback karo"
+    notify "❌ <b>Deploy done but health FAILED</b> ($SITE_DOMAIN) — run rollback"
     log "Health FAILED"
   fi
 else

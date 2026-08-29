@@ -4,7 +4,7 @@
 # Copy this file to config.sh and fill in YOUR project values.
 #   cp config.example.sh config.sh && nano config.sh
 #
-# config.sh is gitignored — kabhi commit mat karo (secrets hain).
+# config.sh is gitignored — never commit it (secrets).
 # ============================================================
 
 # ── Server / SSH ────────────────────────────────────────────
@@ -25,8 +25,8 @@ BUILD_CMD=""                          # build command (npm run build etc.) — l
 MIGRATE_CMD="$PYTHON_BIN -m alembic upgrade head"   # migration command — "" if none
 RESTART_METHOD="passenger"            # passenger | touch | systemctl | docker | none
 WSGI_FILE="passenger_wsgi.py"         # passenger type: your wsgi entry
-DOCKER_COMPOSE=""                     # docker type: docker-compose.yml ka path ("" = nahi)
-PHP_FPM_SERVICE=""                    # php type: php-fpm service name ("" = nahi)
+DOCKER_COMPOSE=""                     # docker type: path to docker-compose.yml ("" = not set)
+PHP_FPM_SERVICE=""                    # php type: php-fpm service name ("" = not set)
 
 # ── Database (optional — backup before migrate) ─────────────
 DB_BACKUP="no"                        # yes | no
@@ -50,5 +50,5 @@ WORKSPACE_BASE="/home/$SERVER_USER/deploy-workspace"  # clone workspace
 # ── Advanced (optional — dynamic defaults) ───────────────────
 TOGGLE_FLAG=""                        # "" = default /home/$SERVER_USER/.deploy_github
 SKIP_WHEN_FLAG=""                     # "1" = flag ho to deploy skip (toggle mode)
-DEFAULT_BRANCH="main"                 # branch jab koi na diya jaye
+DEFAULT_BRANCH="main"                 # branch used when none is passed
 LOG_FILE=""                           # "" = default /home/$SERVER_USER/deploy.log
