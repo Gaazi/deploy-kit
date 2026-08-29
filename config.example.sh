@@ -14,8 +14,8 @@ SSH_PORT="22"                         # SSH port (usually 22)
 
 # ── Site / App ──────────────────────────────────────────────
 SITE_DOMAIN="your-domain.com"         # live domain (no https://)
-APP_DIR="/home/$SERVER_USER/your-app" # live app directory
-REPO_URL="git@github.com:YOUR_USER/YOUR_REPO.git"  # your git repo
+APP_DIR="/home/$SERVER_USER/your-app" # live app directory (REQUIRED)
+REPO_URL="git@github.com:YOUR_USER/YOUR_REPO.git"  # your git repo (REQUIRED)
 
 # ── App Type (choose your stack) ────────────────────────────
 APP_TYPE="python"                     # python | node | php | static | docker
@@ -39,6 +39,9 @@ DB_NAME=""
 # ── Notifications (optional) ────────────────────────────────
 TELEGRAM_BOT_TOKEN=""
 TELEGRAM_CHAT_ID=""
+
+# ── Health check (optional — "" = skip) ─────────────────────
+HEALTH_URL=""                         # e.g. https://your-domain.com/health — "" to skip
 
 # ── Git ─────────────────────────────────────────────────────
 DEPLOY_KEY=""                         # path to SSH deploy key ("" = use default ssh)

@@ -43,11 +43,12 @@ if [ -n "$LATEST_DUMP" ] && [ -n "$DB_NAME" ] && [ -n "$DB_USER" ]; then
   fi
 fi
 
-# restart
+# restart (optional)
 case "$RESTART_METHOD" in
   passenger) mkdir -p "$APP_DIR/tmp" && touch "$APP_DIR/tmp/restart.txt" ;;
   touch)     touch "$APP_DIR/restart.txt" ;;
   systemctl) systemctl restart "$SITE_DOMAIN" 2>/dev/null || true ;;
+  ""|none)   : ;;
 esac
 
 echo "✅ Rolled back to $TARGET_SHA + restarted"
