@@ -43,6 +43,7 @@ Any change → ALL 3. Verify with `diff -q`.
 - Robustness pass: git-failure guard (abort BEFORE rsync --delete if branch/HEAD unresolved — protects app dir), safety guard in rollback too, `sleep 8` only when health check configured, rollback now rebuilds (BUILD_CMD) + uses same excludes + DEFAULT_BRANCH + logs to LOG_FILE, postgres backups pruned (keep 7) like mysql
 - `RSYNC_EXCLUDES` config key added (extra excludes, space-separated) — used by auto_deploy + rollback; setup-quick.sh now parses ALL advanced keys (DEPLOY_KEY, TOGGLE_FLAG, DEFAULT_BRANCH, LOG_FILE, WSGI_FILE, DOCKER_COMPOSE, PHP_FPM_SERVICE, DB_TYPE/DB_HOST/DB_PASS, RSYNC_EXCLUDES...)
 - `test.sh` self-test added: bash -n + missing-config/required errors + full local file:// integration test (deploy → skip → new commit → rollback). Run before committing. NOTE: rsync quick-check = size+mtime — test keeps file sizes different between commits to stay deterministic.
+- LITE workflow: deploy.yml.example trimmed — no checkout, no build, no echo/rm noise; 1 tiny SSH job (fire-and-forget, ~6s job time). Runner cost = VM boot (~1 min) + 6s per push. Zero-Actions alternative already exists: cron mode (TOGGLE_FLAG/SKIP_WHEN_FLAG).
 
 ## Troubleshooting quick
 - `config.sh not found` → copy example first
