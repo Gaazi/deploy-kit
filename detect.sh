@@ -29,7 +29,8 @@ WORKSPACE="$WORKSPACE_BASE/$BRANCH"
 if [ ! -d "$WORKSPACE/.git" ]; then
   echo "📦 Cloning repo (first time)..."
   GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i $DEPLOY_KEY -o StrictHostKeyChecking=no}" \
-    git clone --branch "$BRANCH" "$REPO_URL" "$WORKSPACE" >/dev/null 2>&1 \
+    # --single-branch: only this branch's history — minimum network + disk
+    git clone --single-branch --branch "$BRANCH" "$REPO_URL" "$WORKSPACE" >/dev/null 2>&1 \
     || { echo "❌ Could not clone $REPO_URL — check REPO_URL + run keygen.sh"; exit 1; }
 else
   GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i $DEPLOY_KEY -o StrictHostKeyChecking=no}" \
