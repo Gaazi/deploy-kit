@@ -186,6 +186,51 @@ else
   tail -3 "$TMP/deploy.log" | sed 's/^/     /'
 fi
 
+echo "== 8. deploy lock (concurrent push protection) =="
+mkdir -p "$TMP/ws2"; LOCKD="$TMP/ws2/.deploy-lock"
+mkdir -p "$LOCKD"; echo $$ > "$LOCKD/pid"   # simulate a running deploy
+cat > "$TMP/kit/config.sh" <<CFG
+REPO_URL="file://$BARE"
+APP_DIR="$APP"
+WORKSPACE_BASE="$TMP/ws2"
+LOG_FILE="$TMP/deploy2.log"
+TOGGLE_FLAG="$TMP/flag"
+CFG
+OUT="$(cd "$TMP/kit" && bash auto_deploy.sh main 2>&1)"
+echo "$OUT" | grep -qi "another deploy" && ok "lock: active lock → second deploy skipped" || bad "lock: active lock → second deploy skipped"
+echo 999999 > "$LOCKD/pid"   # dead PID → stale lock must be cleaned
+(cd "$TMP/kit" && bash auto_deploy.sh main >/dev/null 2>&1)
+if [ -f "$TMP/ws2/main/.deployed_sha" ]; then
+  ok "lock: stale lock cleaned + deploy ran"
+else
+  bad "lock: stale lock cleaned + deploy ran"
+fi
+[ ! -d "$LOCKD" ] && ok "lock: released after deploy" || bad "lock: released after deploy"
+
+echo "== 9. build failure → deploy aborts =="
+echo "build-fail" > "$SRC/web/page.html"
+git -C "$SRC" add -A
+git -C "$SRC" -c user.email=test@test -c user.name=test commit -qm c5
+git -C "$SRC" push -q origin main
+sleep 1
+cat > "$TMP/kit/config.sh" <<CFG
+REPO_URL="file://$BARE"
+APP_DIR="$APP"
+WORKSPACE_BASE="$WS"
+LOG_FILE="$TMP/deploy.log"
+TOGGLE_FLAG="$TMP/flag"
+APP_SUBDIR="web"
+BUILD_CMD="exit 3"
+CFG
+(cd "$TMP/kit" && bash auto_deploy.sh main >/dev/null 2>&1)
+RC=$?
+if [ "$RC" -ne 0 ] && grep -q "Build FAILED" "$TMP/deploy.log"; then
+  ok "build failure → deploy aborted with clear message"
+else
+  bad "build failure → deploy aborted with clear message"
+  tail -3 "$TMP/deploy.log" | sed 's/^/     /'
+fi
+
 echo ""
 echo "============================================="
 echo "  PASS: $PASS   FAIL: $FAIL"

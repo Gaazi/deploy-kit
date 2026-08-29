@@ -43,12 +43,15 @@ GitHub push (dev/demo/main)
 ### Step 1: Put the kit on the server
 
 ```bash
-# Create a folder on the server and copy the kit files into it:
+# Option A — copy the files (FTP / file manager) into ~/deploy-kit/ ...
 mkdir -p ~/deploy-kit
-# ... copy the 6 files of this folder into ~/deploy-kit/ ...
-# (or: git clone your-repo → the deploy-kit/ folder already exists)
 
+# Option B — download directly on the server (once the kit repo is public/forked):
 cd ~/deploy-kit
+for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh config.example.sh test.sh; do
+  curl -fsSL -o "$f" "https://raw.githubusercontent.com/YOUR_USER/deploy-kit/main/$f"
+done
+chmod +x *.sh
 ```
 
 ### Step 2: Create the config (most important)
@@ -175,16 +178,17 @@ Push (dev/demo/main) → GitHub Actions (~6s) → server deploy → Telegram ale
 |------|-----|-----|
 | 1 | Load `config.sh` | Always |
 | 2 | Check GitHub-mode flag (`~/.deploy_github`) | If the flag is set up |
-| 3 | Git clone/fetch workspace | First time / every push |
-| 4 | Check for new commit (same SHA = skip) | Every push |
-| 5 | Rsync files → app dir (excludes .env/db/media) | Every deploy |
-| 6 | Build (if `BUILD_CMD` is set) | According to config |
-| 7 | DB backup (if `DB_BACKUP=yes`) | Before migrate |
-| 8 | Migrate (if `MIGRATE_CMD` is set) | Every deploy |
-| 9 | Restart (`RESTART_METHOD`) | Every deploy |
-| 10 | Record deployed SHA | Every deploy |
-| 11 | Health check (is the site live?) | Every deploy |
-| 12 | Telegram alert (start/success/fail) | If a token exists |
+| 3 | **Deploy lock** (concurrent pushes can't clash; stale lock auto-cleaned) | Always |
+| 4 | Git clone/fetch workspace | First time / every push |
+| 5 | Check for new commit (same SHA = skip) | Every push |
+| 6 | Rsync files → app dir (excludes .env/db/media; `APP_SUBDIR` = subfolder) | Every deploy |
+| 7 | Build (if `BUILD_CMD` is set — **failure aborts the deploy**) | According to config |
+| 8 | DB backup (if `DB_BACKUP=yes`) | Before migrate |
+| 9 | Migrate (if `MIGRATE_CMD` is set — **failure aborts**) | Every deploy |
+| 10 | Restart (`RESTART_METHOD`) | Every deploy |
+| 11 | Record deployed SHA | Every deploy |
+| 12 | Health check (is the site live?) | Every deploy |
+| 13 | Telegram alert (start/success/fail) | If a token exists |
 
 ---
 
@@ -222,6 +226,8 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 | Deployed but site is down | Health check failed | Run `rollback.sh` |
 | Deploy skipped ("No new commit") | Same SHA | Make a new push |
 | No DB backup | `DB_BACKUP` is no or DB_* is empty | Check the config |
+| "Another deploy is running" | Two pushes at once | Normal — the running deploy picks up the latest commit |
+| "Build FAILED" / "Migrate FAILED" | Build/migrate command error | Check the log, fix, push again; run `rollback.sh` if the site broke |
 
 ---
 

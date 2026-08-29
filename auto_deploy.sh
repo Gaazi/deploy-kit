@@ -23,9 +23,15 @@ source "$CONFIG_FILE"
 
 BRANCH="${1:-${DEFAULT_BRANCH:-main}}"
 APP_DIR="${APP_DIR:-/home/$SERVER_USER/app}"
-WORKSPACE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}/$BRANCH"
+WORKSPACE_BASE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}"
+WORKSPACE="$WORKSPACE_BASE/$BRANCH"
 LOG="${LOG_FILE:-/home/$SERVER_USER/deploy.log}"
 NOW="$(date '+%F %T')"
+
+# ── Log rotation (keep it light — 1MB cap) ─────────────────
+if [ -f "$LOG" ] && [ "$(wc -c < "$LOG" 2>/dev/null || echo 0)" -gt 1048576 ]; then
+  mv "$LOG" "$LOG.1" 2>/dev/null
+fi
 
 # ── Required check (only these 2 required — rest optional) ─
 if [ -z "$REPO_URL" ] || [ -z "$APP_DIR" ]; then
@@ -49,6 +55,24 @@ if [ -f "$TOGGLE_FLAG" ] && [ -n "$SKIP_WHEN_FLAG" ]; then
   log "Skipped — flag present ($TOGGLE_FLAG)"
   exit 0
 fi
+
+# ── Deploy lock (concurrent pushes can't clash) ─────────────
+# mkdir-based lock: portable, no extra dependencies.
+# Stale lock (dead PID) is cleaned automatically.
+LOCK_DIR="$WORKSPACE_BASE/.deploy-lock"
+mkdir -p "$WORKSPACE_BASE"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  LOCK_PID="$(cat "$LOCK_DIR/pid" 2>/dev/null)"
+  if [ -n "$LOCK_PID" ] && [ -f "$LOCK_DIR/pid" ] && ! kill -0 "$LOCK_PID" 2>/dev/null; then
+    rm -rf "$LOCK_DIR"
+    mkdir "$LOCK_DIR" 2>/dev/null || { echo "⏳ Another deploy is running — skipped"; exit 0; }
+  else
+    echo "⏳ Another deploy is running — this one skipped (the running deploy picks up the latest commit)"
+    exit 0
+  fi
+fi
+echo $$ > "$LOCK_DIR/pid" 2>/dev/null
+trap 'rm -rf "$LOCK_DIR" 2>/dev/null' EXIT
 
 # ── 1. Git workspace ────────────────────────────────────────
 if [ ! -d "$WORKSPACE/.git" ]; then
@@ -106,7 +130,11 @@ rsync -az --delete "${RSYNC_ARGS[@]}" "$SRC_DIR/" "$APP_DIR/" >> "$LOG" 2>&1
 # ── 3. Build (if configured) ────────────────────────────────
 if [ -n "$BUILD_CMD" ]; then
   log "Running build: $BUILD_CMD"
-  (cd "$APP_DIR" && eval "$BUILD_CMD") >> "$LOG" 2>&1
+  if ! (cd "$APP_DIR" && eval "$BUILD_CMD") >> "$LOG" 2>&1; then
+    notify "❌ <b>Deploy FAILED</b> ($SITE_DOMAIN · $BRANCH) — build failed. Check server log."
+    echo "❌ Build FAILED — deploy aborted. If the site is broken, run: rollback.sh $BRANCH" | tee -a "$LOG"
+    exit 1
+  fi
 fi
 
 # ── 4. DB backup (optional) ─────────────────────────────────
@@ -134,7 +162,11 @@ fi
 # ── 5. Migrate (if configured) ──────────────────────────────
 if [ -n "$MIGRATE_CMD" ]; then
   log "Running migrate: $MIGRATE_CMD"
-  (cd "$APP_DIR" && eval "$MIGRATE_CMD") >> "$LOG" 2>&1
+  if ! (cd "$APP_DIR" && eval "$MIGRATE_CMD") >> "$LOG" 2>&1; then
+    notify "❌ <b>Deploy FAILED</b> ($SITE_DOMAIN · $BRANCH) — migrate failed. Check server log."
+    echo "❌ Migrate FAILED — deploy aborted. Restore the DB from backups/predeploy/, then run: rollback.sh $BRANCH" | tee -a "$LOG"
+    exit 1
+  fi
 fi
 
 # ── 6. Restart (optional — "" / "none" = skip) ───────────────

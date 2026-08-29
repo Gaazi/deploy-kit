@@ -13,9 +13,26 @@ CONFIG_FILE="${SCRIPT_DIR}/config.sh"
 
 BRANCH="${1:-${DEFAULT_BRANCH:-main}}"
 APP_DIR="${APP_DIR:-/home/$SERVER_USER/app}"
-WORKSPACE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}/$BRANCH"
+WORKSPACE_BASE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}"
+WORKSPACE="$WORKSPACE_BASE/$BRANCH"
 LOG="${LOG_FILE:-/home/$SERVER_USER/deploy.log}"
 TARGET_SHA="${2:-$(cat "$WORKSPACE/.deployed_sha" 2>/dev/null)}"
+
+# ── Deploy lock (same lock as auto_deploy.sh — no clash) ────
+LOCK_DIR="$WORKSPACE_BASE/.deploy-lock"
+mkdir -p "$WORKSPACE_BASE"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  LOCK_PID="$(cat "$LOCK_DIR/pid" 2>/dev/null)"
+  if [ -n "$LOCK_PID" ] && [ -f "$LOCK_DIR/pid" ] && ! kill -0 "$LOCK_PID" 2>/dev/null; then
+    rm -rf "$LOCK_DIR"
+    mkdir "$LOCK_DIR" 2>/dev/null || { echo "❌ A deploy is running — wait, then retry rollback"; exit 1; }
+  else
+    echo "❌ A deploy is currently running — wait for it to finish, then retry rollback"
+    exit 1
+  fi
+fi
+echo $$ > "$LOCK_DIR/pid" 2>/dev/null
+trap 'rm -rf "$LOCK_DIR" 2>/dev/null' EXIT
 
 if [ -z "$TARGET_SHA" ]; then
   echo "❌ Target SHA not found — provide a commit SHA"
