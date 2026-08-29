@@ -24,10 +24,12 @@ GitHub push (dev/demo/main)
 | File | Kya karta hai |
 |------|---------------|
 | `config.example.sh` | **Settings template** — `config.sh` banao aur apne values bharo |
+| `setup.sh` | **Interactive setup** — sawal jawab se config.sh khud banata hai |
 | `auto_deploy.sh` | Deploy script — git → rsync → build → backup → migrate → restart → health → telegram |
 | `rollback.sh` | Pichle commit par wapas jao + DB restore |
 | `.github/workflows/deploy.yml.example` | GitHub Actions trigger (fire-and-forget ~6s) |
 | `README.md` | Ye guide |
+| `LICENSE` | MIT License — public repo ke liye |
 | `.gitignore` | `config.sh` / secrets kabhi commit na ho |
 
 ---

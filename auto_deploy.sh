@@ -108,6 +108,14 @@ case "$RESTART_METHOD" in
   passenger) mkdir -p "$APP_DIR/tmp" && touch "$APP_DIR/tmp/restart.txt" ;;
   touch)     touch "$APP_DIR/restart.txt" ;;
   systemctl) systemctl restart "$SITE_DOMAIN" 2>>"$LOG" || true ;;
+  docker)    if [ -n "$DOCKER_COMPOSE" ]; then
+               (cd "$APP_DIR" && docker compose -f "$DOCKER_COMPOSE" down && docker compose -f "$DOCKER_COMPOSE" up -d --build) >> "$LOG" 2>&1
+             else
+               (cd "$APP_DIR" && docker compose up -d --build) >> "$LOG" 2>&1
+             fi ;;
+  php)       if [ -n "$PHP_FPM_SERVICE" ]; then
+               systemctl reload "$PHP_FPM_SERVICE" 2>>"$LOG" || service "$PHP_FPM_SERVICE" reload 2>>"$LOG" || true
+             fi ;;
   none)      : ;;
 esac
 log "Restart done ($RESTART_METHOD)"

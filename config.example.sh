@@ -18,13 +18,15 @@ APP_DIR="/home/$SERVER_USER/your-app" # live app directory
 REPO_URL="git@github.com:YOUR_USER/YOUR_REPO.git"  # your git repo
 
 # ── App Type (choose your stack) ────────────────────────────
-APP_TYPE="python"                     # python | node | php | static
+APP_TYPE="python"                     # python | node | php | static | docker
 PYTHON_BIN="/home/$SERVER_USER/virtualenv/your-app/3.11/bin/python"  # python type
 NODE_BIN=""                           # node type: /path/to/node
 BUILD_CMD=""                          # build command (npm run build etc.) — leave "" if none
 MIGRATE_CMD="$PYTHON_BIN -m alembic upgrade head"   # migration command — "" if none
-RESTART_METHOD="passenger"            # passenger | touch | systemctl | none
+RESTART_METHOD="passenger"            # passenger | touch | systemctl | docker | none
 WSGI_FILE="passenger_wsgi.py"         # passenger type: your wsgi entry
+DOCKER_COMPOSE=""                     # docker type: docker-compose.yml ka path ("" = nahi)
+PHP_FPM_SERVICE=""                    # php type: php-fpm service name ("" = nahi)
 
 # ── Database (optional — backup before migrate) ─────────────
 DB_BACKUP="no"                        # yes | no
