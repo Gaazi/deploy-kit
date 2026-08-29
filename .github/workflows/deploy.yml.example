@@ -2,8 +2,9 @@
 # ------------------------------------------------------------
 # Copy to your repo: .github/workflows/deploy.yml
 # Edit: branch names + 4 GitHub Secrets (see README).
-# LITE: no checkout, no build here — ONE tiny SSH job fires the
-# deploy on the server in the background (~6s job, fire-and-forget).
+# LITE: no checkout, no build — ONE tiny SSH job (~6s job time).
+# Doc-only pushes (docs/** + *.md) skip the runner entirely = 0 cost.
+# Want ZERO Actions minutes? Use cron mode: /bin/bash cron.sh
 # ============================================================
 
 name: Deploy
@@ -11,12 +12,14 @@ name: Deploy
 on:
   push:
     branches: ["dev", "demo", "main"]   # ← edit: your branch names
-    paths-ignore: ["*.md", "**/*.md"]   # doc-only pushes = 0 runner time
+    paths-ignore: ["*.md", "**/*.md", "docs/**"]  # doc pushes = 0 runner time
   workflow_dispatch:
 
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: true
+
+permissions: {}          # minimal — no unnecessary GITHUB_TOKEN
 
 jobs:
   deploy:
