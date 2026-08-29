@@ -52,6 +52,7 @@ WEBHOOK_PORT="9000"                   # listener port (webhook.sh start)
 # ── Health check (optional — "" = skip) ─────────────────────
 HEALTH_URL=""                         # e.g. https://your-domain.com/health — "" to skip
 HEALTH_WAIT="8"                       # seconds to wait after restart before checking
+HEALTH_RETRY="3"                      # how many times to retry (app may need a moment)
 
 # ── Git ─────────────────────────────────────────────────────
 DEPLOY_KEY=""                         # path to SSH deploy key ("" = use default ssh)

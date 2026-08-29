@@ -166,6 +166,7 @@ WEBHOOK_PORT="9000"
 # ── Health check (optional) ──
 HEALTH_URL="$HEALTH_URL"
 HEALTH_WAIT="8"
+HEALTH_RETRY="3"
 
 # ── Git / Advanced ──
 DEPLOY_KEY=""

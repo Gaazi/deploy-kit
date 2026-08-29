@@ -33,7 +33,7 @@
 
 - **Required:** `REPO_URL`, `APP_DIR`
 - **Server:** SERVER_USER, SERVER_HOST, SSH_PORT
-- **App/Stack:** APP_TYPE, PYTHON_BIN, NODE_BIN, BUILD_CMD, MIGRATE_CMD, RESTART_METHOD, SERVICE_NAME, PM2_APP, SUPERVISOR_APP, WSGI_FILE, DOCKER_COMPOSE, PHP_FPM_SERVICE, APP_SUBDIR, HEALTH_URL, HEALTH_WAIT
+- **App/Stack:** APP_TYPE, PYTHON_BIN, NODE_BIN, BUILD_CMD, MIGRATE_CMD, RESTART_METHOD, SERVICE_NAME, PM2_APP, SUPERVISOR_APP, WSGI_FILE, DOCKER_COMPOSE, PHP_FPM_SERVICE, APP_SUBDIR, HEALTH_URL, HEALTH_WAIT, HEALTH_RETRY
 - **DB:** DB_BACKUP, DB_BACKUP_KEEP, DB_TYPE, DB_HOST, DB_USER, DB_PASS, DB_NAME
 - **Notify:** TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 - **Webhook (VPS):** DEPLOY_WEBHOOK_SECRET, WEBHOOK_PORT
@@ -77,6 +77,7 @@
 - **Trigger choice:** hosted / self-hosted (`runner.sh`) / webhook (`webhook.sh`) / cron — README "Choose your trigger" table
 - **Webhook mode (NEW):** `webhook.sh` (socat HTTP listener, VPS only, start/stop/status) + `deploy-webhook.yml.example` + `DEPLOY_WEBHOOK_SECRET`/`WEBHOOK_PORT` keys — ~1-2s deploys, 0 Actions minutes. Supports BOTH native GitHub webhook (Settings → Webhooks, HMAC `X-Hub-Signature-256` verified, branch from `refs/heads/...`) AND custom `X-Deploy-Secret` header. Native = 0 runner at all.
 - **Resource budget (MAIN GOAL):** documented in AGENTS.md + README + MEMORY — GitHub budget (hosted ~1min, webhook/cron/self-hosted 0) + server budget (single-branch, SHA-skip, log rotation, DB_BACKUP_KEEP, lock). Never add deploy work to a workflow.
+- **Confusion cleanup:** workflow .example headers now say WHO should use each (deploy.yml = default/all, deploy-selfhosted = only if runner.sh, deploy-webhook = only if webhook.sh). README Step 5 "KAUNSA workflow copy karo?" table. Health check now retries (`HEALTH_RETRY`, default 3) — app boot time tolerant.
 - **Runner-lite:** paths-ignore `docs/**`, `permissions: {}`, CI installs rsync only if missing
 - **Fully dynamic:** `detect.sh` auto-detects stack; `HEALTH_WAIT` key; zero hardcoded values
 - **Zero-Actions:** `cron.sh`; `DB_BACKUP_KEEP`

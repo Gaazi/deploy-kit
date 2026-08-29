@@ -1,10 +1,16 @@
-# GitHub Actions workflow — DEPLOY KIT (GENERIC, LITE)
+# GitHub Actions workflow — DEPLOY KIT (DEFAULT: hosted runner, FREE 2000 min/mo)
+# ============================================================
+# ✅ YEH WO FILE HAI JO ZYADA TAR USERS COPY KARTE HAIN
 # ------------------------------------------------------------
-# Copy to your repo: .github/workflows/deploy.yml
-# Edit: branch names + 4 GitHub Secrets (see README).
-# LITE: no checkout, no build — ONE tiny SSH job (~6s job time).
-# Doc-only pushes (docs/** + *.md) skip the runner entirely = 0 cost.
-# Want ZERO Actions minutes? Use cron mode: /bin/bash cron.sh
+# KAUN use kare:  SAB (cPanel + VPS) — koi extra setup nahi chahiye
+# KYA karta hai:  GitHub ka FREE hosted runner (ubuntu-latest) chalta hai,
+#                 ek chhota SSH trigger bhejta hai (~1 min total).
+#                 Free plan = 2000 min/month ≈ 2000 deploys.
+# COPY KAISE:     cp deploy.yml.example .github/workflows/deploy.yml
+# THEN:           branch names edit karo + 4 GitHub Secrets set karo
+#                 (SSH_PRIVATE_KEY, SERVER_HOST, SERVER_USER, SSH_PORT)
+# OTHER FILES:    deploy-selfhosted.yml  = SIRF VPS user jo runner.sh chalaye
+#                 deploy-webhook.yml     = SIRF VPS user jo webhook.sh chalaye
 # ============================================================
 
 name: Deploy

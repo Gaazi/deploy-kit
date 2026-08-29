@@ -64,6 +64,7 @@ Webhook listener: `webhook.sh start|stop|status`. Needs socat (VPS only).
 |-----|------|
 | `HEALTH_URL` | Full URL to check after deploy — `""` = skip. Default fallback `https://$SITE_DOMAIN/`. Uses `curl -m 15` (never hangs). |
 | `HEALTH_WAIT` | Seconds to sleep after restart before checking — `""` = 8. |
+| `HEALTH_RETRY` | How many times to retry health check (app may need a moment) — `""` = 3. |
 
 ## Git / Advanced (optional)
 | Key | What | Default |
