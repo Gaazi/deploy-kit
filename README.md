@@ -25,6 +25,7 @@ GitHub push (dev/demo/main)
 |------|---------------|
 | `config.example.sh` | **Settings template** — create `config.sh` and fill in your values |
 | `setup.sh` | **Interactive setup** — creates config.sh itself through questions & answers |
+| `setup-quick.sh` | **Paste setup** — paste all your values at once, no questions |
 | `auto_deploy.sh` | Deploy script — git → rsync → build → backup → migrate → restart → health → telegram |
 | `rollback.sh` | Go back to the previous commit + DB restore |
 | `.github/workflows/deploy.yml.example` | GitHub Actions trigger (fire-and-forget ~6s) |
@@ -49,13 +50,17 @@ cd ~/deploy-kit
 
 ### Step 2: Create the config (most important)
 
-**2 ways:**
+**3 ways:**
 
 ```bash
-# Method A — Easy (setup.sh — questions & answers, creates it itself):
+# Method A — Interactive (setup.sh — questions & answers, creates it itself):
 /bin/bash setup.sh
 
-# Method B — Manual (copy + edit config.example.sh):
+# Method B — Paste (setup-quick.sh — paste all values at once, no questions):
+/bin/bash setup-quick.sh
+#   → paste KEY=VALUE lines (SERVER_USER=cpuser, REPO_URL=git@..., ...), then Ctrl+D
+
+# Method C — Manual (copy + edit config.example.sh):
 cp config.example.sh config.sh
 nano config.sh
 ```
@@ -200,7 +205,7 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (6 files)
+- [ ] `~/deploy-kit/` on the server (7 files)
 - [ ] Created `config.sh` + your values
 - [ ] `chmod +x auto_deploy.sh rollback.sh`
 - [ ] Manual test: `/bin/bash auto_deploy.sh main` ✅
