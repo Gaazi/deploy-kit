@@ -138,17 +138,18 @@ if [ -n "$BUILD_CMD" ]; then
 fi
 
 # ── 4. DB backup (optional) ─────────────────────────────────
-if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ] && [ -n "$DB_USER" ]; then
+# sqlite needs no DB_USER — only DB_NAME (file path inside APP_DIR)
+if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ]; then
   BK_DIR="$APP_DIR/backups/predeploy"
   mkdir -p "$BK_DIR"
   TS="$(date +%Y%m%d_%H%M%S)"
   KEEP="${DB_BACKUP_KEEP:-7}"   # how many old dumps to keep (lighter disk = smaller number)
-  if [ "$DB_TYPE" = "mysql" ] && command -v mysqldump >/dev/null 2>&1; then
+  if [ "$DB_TYPE" = "mysql" ] && [ -n "$DB_USER" ] && command -v mysqldump >/dev/null 2>&1; then
     MYSQL_PWD="$DB_PASS" mysqldump -h "$DB_HOST" -u "$DB_USER" --single-transaction "$DB_NAME" \
       > "$BK_DIR/${SITE_DOMAIN}_${TS}.sql" 2>>"$LOG" \
       && ls -1t "$BK_DIR"/*.sql 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f 2>/dev/null
     log "DB backup: $BK_DIR/${SITE_DOMAIN}_${TS}.sql (last $KEEP kept)"
-  elif [ "$DB_TYPE" = "postgres" ] && command -v pg_dump >/dev/null 2>&1; then
+  elif [ "$DB_TYPE" = "postgres" ] && [ -n "$DB_USER" ] && command -v pg_dump >/dev/null 2>&1; then
     PGPASSWORD="$DB_PASS" pg_dump -h "$DB_HOST" -U "$DB_USER" "$DB_NAME" \
       > "$BK_DIR/${SITE_DOMAIN}_${TS}.sql" 2>>"$LOG" \
       && ls -1t "$BK_DIR"/*.sql 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f 2>/dev/null

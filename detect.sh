@@ -102,13 +102,11 @@ echo ""
 read -rp "Apply these to config.sh? (yes/no) [yes]: " ANS
 case "$ANS" in
   ""|y|Y|yes|YES|Yes)
-    apply_key() {  # $1=KEY  $2=value
+    apply_key() {  # $1=KEY  $2=value (safe: no sed/echo expansion of & $ | etc.)
       local k="$1" v="$2"
-      if grep -q "^$k=" "$CONFIG_FILE"; then
-        sed -i "s|^$k=.*|$k=\"$v\"|" "$CONFIG_FILE"
-      else
-        echo "$k=\"$v\"" >> "$CONFIG_FILE"
-      fi
+      grep -v "^$k=" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" 2>/dev/null
+      printf '%s="%s"\n' "$k" "$v" >> "$CONFIG_FILE.tmp"
+      mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
     }
     apply_key APP_TYPE "$APP_TYPE"
     apply_key BUILD_CMD "$BUILD_CMD"
