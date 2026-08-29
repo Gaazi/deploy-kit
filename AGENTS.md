@@ -36,7 +36,7 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 ## Golden Rules (CRITICAL — never violate)
 
 1. **100% GENERIC** — this kit can become PUBLIC anytime. Never add:
-   - any real project's data, domains, usernames, DB names
+   - Any real project's data, domains, usernames, DB names
    - Real secrets, tokens, keys, passwords (only placeholders in examples)
 2. **`config.sh` NEVER committed** — `.gitignore` has it. Secrets live only on the server.
 3. **Everything OPTIONAL** — only `REPO_URL` + `APP_DIR` are required. Backup, build, migrate, restart, health check, Telegram, toggle — all optional; empty config = skip, never crash.
@@ -75,22 +75,19 @@ cp config.example.sh config.sh && nano config.sh   # Method C — manual
 
 ## Sync Strategy (IMPORTANT)
 
-The kit exists in **3 places** — any change must reach ALL:
+The kit is a **100% standalone project** — no other project is tied to it.
 
-1. **Standalone repo** `Gaazi/deploy-kit` (local: `/run/media/ghazi/Data/coding/projects/deploy-kit`, remote: `git@github.com:Gaazi/deploy-kit.git`, branch `main`, PRIVATE — public later)
-2. related repo folder `deploy-kit/` (remote `Gaazi/related repo.git`, branches `dev` + `deploy` — work on `deploy` first, then sync to `dev`)
-3. **User's server** `~/deploy-kit/` (deployed files — user copies manually)
+1. **Standalone repo** `Gaazi/deploy-kit` (local: `/run/media/ghazi/Data/coding/projects/deploy-kit`, remote: `git@github.com:Gaazi/deploy-kit.git`, branch `main`)
+2. **User's server** `~/deploy-kit/` (deployed files — user copies manually)
 
-**After any change:** standalone push + deploy branch commit + dev sync. Verify with `diff -q` across locations.
+**After any change:** commit + push to `main`. That's it — nothing else to sync.
 
 ---
 
 ## Git Rules
 
-- Deploy-kit is deploy infra → **work on `deploy` branch FIRST**, then sync to `dev`.
-- Never push to demo/main without explicit user order. ONE-TIME means ONE-TIME.
-- Always return to `dev` after any other branch work.
-- Standalone repo: push directly to `main` (it IS the main).
+- Push directly to `main` (it IS the main).
+- Keep the repo public-ready: no real data, no secrets.
 
 ---
 
@@ -107,5 +104,5 @@ The kit exists in **3 places** — any change must reach ALL:
 
 - Update `.agents/MEMORY.md` if the change is non-obvious/expensive to rediscover.
 - Update relevant reference file if a behavior changed.
-- Re-run `bash -n` on all scripts.
-- Sync to all 3 locations.
+- Re-run `bash -n` on all scripts (and `test.sh` if logic changed).
+- Commit + push to `main`.
