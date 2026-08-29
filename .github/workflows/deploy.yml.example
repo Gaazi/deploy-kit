@@ -11,6 +11,7 @@ name: Deploy
 on:
   push:
     branches: ["dev", "demo", "main"]   # ← edit: your branch names
+    paths-ignore: ["*.md", "**/*.md"]   # doc-only pushes = 0 runner time
   workflow_dispatch:
 
 concurrency:
