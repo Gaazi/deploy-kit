@@ -3,13 +3,18 @@
 # DEPLOY KIT — webhook.sh (GitHub webhook listener, ~1-2s)
 # ------------------------------------------------------------
 #   /bin/bash webhook.sh start|stop|status
-# VPS ONLY — needs socat (apt install socat).
-# GitHub POSTs → webhook.sh verifies DEPLOY_WEBHOOK_SECRET →
-# fires auto_deploy.sh <branch> in the background. Fastest
-# trigger (~1-2s), 0 GitHub Actions minutes.
+# VPS ONLY — needs socat (apt install socat) + openssl.
+# GitHub POSTs → webhook.sh verifies → fires auto_deploy.sh
+# <branch> in the background. Fastest trigger (~1-2s), 0 GitHub
+# Actions minutes (no runner at all with native webhook).
+#
+# TWO ways to trigger:
+#   1. Native GitHub webhook (recommended, 0 runner): repo →
+#      Settings → Webhooks → payload URL http://SERVER:PORT/
+#      webhook/deploy/ + secret (HMAC verified).
+#   2. GitHub Actions workflow (deploy-webhook.yml.example).
 # Pair with: .github/workflows/deploy-webhook.yml.example
-# ⚠️ Production: put it behind HTTPS (nginx/caddy proxy) or use
-#    a strong random DEPLOY_WEBHOOK_SECRET.
+# ⚠️ Production: put it behind HTTPS (nginx/caddy proxy).
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -60,20 +65,35 @@ status() {
 handler() {
   # parse the HTTP request from stdin
   read -r REQUEST
-  SECRET_HEADER=""; LEN=0
+  SECRET_HEADER=""; HUB_SIG=""; LEN=0
   while read -r line; do
     line="${line%$'\r'}"
     [ -z "$line" ] && break
     case "$line" in
-      X-Deploy-Secret:*) SECRET_HEADER="${line#*: }" ;;
-      Content-Length:*)  LEN="${line#*: }" ;;
+      X-Deploy-Secret:*)    SECRET_HEADER="${line#*: }" ;;
+      X-Hub-Signature-256:*) HUB_SIG="${line#*: }" ;;
+      Content-Length:*)     LEN="${line#*: }" ;;
     esac
   done
   BODY=""
   [ "$LEN" -gt 0 ] 2>/dev/null && BODY="$(dd bs=1 count="$LEN" 2>/dev/null)"
+  # extract branch: try our format first, then native GitHub webhook ref
   BRANCH="$(printf '%s' "$BODY" | sed -n 's/.*"branch"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
-
-  if [ -n "$SECRET" ] && [ "$SECRET_HEADER" = "$SECRET" ] && [ -n "$BRANCH" ]; then
+  if [ -z "$BRANCH" ]; then
+    BRANCH="$(printf '%s' "$BODY" | sed -n 's/.*"ref"[[:space:]]*:[[:space:]]*"refs\/heads\/\([^"]*\)".*/\1/p')"
+  fi
+  # verify: native GitHub webhook (HMAC) OR our custom header OR nothing
+  AUTHORIZED=0
+  if [ -n "$SECRET" ]; then
+    if [ -n "$HUB_SIG" ]; then
+      # native GitHub webhook — verify HMAC-SHA256
+      EXPECTED="sha256=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SECRET" 2>/dev/null | sed 's/.* //')"
+      [ "$HUB_SIG" = "$EXPECTED" ] && AUTHORIZED=1
+    elif [ -n "$SECRET_HEADER" ] && [ "$SECRET_HEADER" = "$SECRET" ]; then
+      AUTHORIZED=1
+    fi
+  fi
+  if [ "$AUTHORIZED" -eq 1 ] && [ -n "$BRANCH" ]; then
     nohup /bin/bash "$SCRIPT_DIR/auto_deploy.sh" "$BRANCH" >> "$LOG" 2>&1 &
     printf 'HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nok'
   else

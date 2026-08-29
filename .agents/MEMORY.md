@@ -5,10 +5,13 @@
 ## ⚡ Quick Reference (fastest lookup)
 
 - **What:** config-driven auto-deploy kit for ANY project (Python/Node/PHP/WordPress/Ruby/Java/Go/static/Docker) on cPanel or VPS
-- **Trigger options:** hosted Actions (~1 min) · self-hosted runner (~6s, `runner.sh`, VPS) · webhook (~1-2s, `webhook.sh`, VPS) · cron (`cron.sh`, 0 Actions) — all call the SAME `auto_deploy.sh`
+- **MAIN GOAL:** server + GitHub resource = minimum, so free limits never run out
+- **Trigger options:** hosted Actions (~1 min) · self-hosted runner (~6s, `runner.sh`, VPS) · webhook (~1-2s, `webhook.sh`, VPS — native = 0 runner) · cron (`cron.sh`, 0 Actions) — all call the SAME `auto_deploy.sh`
 - **Resource principle:** runner does ONLY the ~6s trigger; ALL deploy work runs on the server. Never add deploy logic to a workflow.
+- **Resource budget (GitHub):** hosted ~1 min/deploy · native webhook 0 · cron 0 · self-hosted 0 · docs push 0 (paths-ignore)
+- **Resource budget (server):** `--single-branch` clone · SHA-skip instant · log 1MB rotation · DB_BACKUP_KEEP · deploy lock · optional steps only when configured
 - **Required config:** only `REPO_URL` + `APP_DIR`. Everything else optional — empty = skip, never crash.
-- **Test:** `/bin/bash test.sh` — 34 checks, run before committing. CI runs it on every push to main.
+- **Test:** `/bin/bash test.sh` — 36 checks, run before committing. CI runs it on every push to main.
 - **Deploy flow:** git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health → Telegram
 
 ## File map (what each script does)
@@ -72,7 +75,8 @@
 
 - **Resource principle:** runner trigger only, server all work; `--single-branch` clone; documented in AGENTS.md + README + references
 - **Trigger choice:** hosted / self-hosted (`runner.sh`) / webhook (`webhook.sh`) / cron — README "Choose your trigger" table
-- **Webhook mode (NEW):** `webhook.sh` (socat HTTP listener, VPS only, start/stop/status) + `deploy-webhook.yml.example` + `DEPLOY_WEBHOOK_SECRET`/`WEBHOOK_PORT` keys — ~1-2s deploys, 0 Actions minutes
+- **Webhook mode (NEW):** `webhook.sh` (socat HTTP listener, VPS only, start/stop/status) + `deploy-webhook.yml.example` + `DEPLOY_WEBHOOK_SECRET`/`WEBHOOK_PORT` keys — ~1-2s deploys, 0 Actions minutes. Supports BOTH native GitHub webhook (Settings → Webhooks, HMAC `X-Hub-Signature-256` verified, branch from `refs/heads/...`) AND custom `X-Deploy-Secret` header. Native = 0 runner at all.
+- **Resource budget (MAIN GOAL):** documented in AGENTS.md + README + MEMORY — GitHub budget (hosted ~1min, webhook/cron/self-hosted 0) + server budget (single-branch, SHA-skip, log rotation, DB_BACKUP_KEEP, lock). Never add deploy work to a workflow.
 - **Runner-lite:** paths-ignore `docs/**`, `permissions: {}`, CI installs rsync only if missing
 - **Fully dynamic:** `detect.sh` auto-detects stack; `HEALTH_WAIT` key; zero hardcoded values
 - **Zero-Actions:** `cron.sh`; `DB_BACKUP_KEEP`
@@ -81,7 +85,7 @@
 - **All-stacks:** pm2/supervisor, SERVICE_NAME, APP_SUBDIR, sqlite, 9 app types
 - **Beginner:** YES/NO wizard, `keygen.sh`
 - **LITE workflow:** no checkout/build, 1 tiny SSH job
-- **test.sh:** self-test (34 checks)
+- **test.sh:** self-test (36 checks)
 - **RSYNC_EXCLUDES** config key; setup-quick parses all keys
 - **Robustness:** git-failure guard, rollback rebuild, postgres prune
 - **Dynamic config:** TOGGLE_FLAG, DEFAULT_BRANCH, LOG_FILE — 0 hardcoded paths

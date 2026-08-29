@@ -295,6 +295,19 @@ echo "$RESP" | grep -q "200 OK" && ok "webhook: valid secret → 200" || bad "we
 # wrong secret → expect 403
 RESP2="$(printf 'POST /webhook/deploy/ HTTP/1.1\r\nHost: x\r\nX-Deploy-Secret: wrong\r\nContent-Length: %s\r\n\r\n%s' "$LEN" "$BODY" | (cd "$TMP/webhook-kit" && bash webhook.sh handler 2>/dev/null))"
 echo "$RESP2" | grep -q "403" && ok "webhook: wrong secret → 403" || bad "webhook: wrong secret → 403"
+# native GitHub webhook: valid HMAC (X-Hub-Signature-256) + ref payload → 200
+if command -v openssl >/dev/null 2>&1; then
+  NBODY='{"ref":"refs/heads/dev","after":"abc123"}'
+  NLEN=$(printf '%s' "$NBODY" | wc -c)
+  SIG="sha256=$(printf '%s' "$NBODY" | openssl dgst -sha256 -hmac "testsecret" 2>/dev/null | sed 's/.* //')"
+  RESP3="$(printf 'POST /webhook/deploy/ HTTP/1.1\r\nHost: x\r\nX-Hub-Signature-256: %s\r\nContent-Length: %s\r\n\r\n%s' "$SIG" "$NLEN" "$NBODY" | (cd "$TMP/webhook-kit" && bash webhook.sh handler 2>/dev/null))"
+  echo "$RESP3" | grep -q "200 OK" && ok "webhook: native GitHub HMAC + ref → 200" || bad "webhook: native GitHub HMAC + ref → 200"
+  # bad HMAC → 403
+  RESP4="$(printf 'POST /webhook/deploy/ HTTP/1.1\r\nHost: x\r\nX-Hub-Signature-256: sha256=badbadbad\r\nContent-Length: %s\r\n\r\n%s' "$NLEN" "$NBODY" | (cd "$TMP/webhook-kit" && bash webhook.sh handler 2>/dev/null))"
+  echo "$RESP4" | grep -q "403" && ok "webhook: bad HMAC → 403" || bad "webhook: bad HMAC → 403"
+else
+  echo "  ⏭️ openssl not available — skipping native webhook test"
+fi
 
 echo ""
 echo "============================================="

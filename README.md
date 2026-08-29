@@ -216,19 +216,38 @@ Push (dev/demo/main) → GitHub Actions (~6s) → server deploy → Telegram ale
 
 ## 🎯 Choose your deploy trigger (all included)
 
-| Trigger | Deploy speed | GitHub Actions minutes | Works on | Setup |
-|---------|-------------|------------------------|----------|-------|
-| **Hosted Actions** | ~1 min (VM boot + ~6s) | ~1 / deploy | cPanel + VPS | `deploy.yml.example` |
-| **Self-hosted runner** ⚡ | **~5-6s** (no VM boot) | **0** | VPS only | `runner.sh` + `deploy-selfhosted.yml.example` |
-| **Webhook** ⚡⚡ | **~1-2s** | **0** | VPS only | `webhook.sh` + `deploy-webhook.yml.example` |
-| **Cron** | within N min | **0** | cPanel + VPS | `cron.sh` |
+| Trigger | Deploy speed | GitHub Actions minutes | Runner used? | Works on | Setup |
+|---------|-------------|------------------------|--------------|----------|-------|
+| **Hosted Actions** | ~1 min (VM boot + ~6s) | ~1 / deploy | yes (VM) | cPanel + VPS | `deploy.yml.example` |
+| **Self-hosted runner** ⚡ | **~5-6s** (no VM boot) | **0** | yes (self-hosted) | VPS only | `runner.sh` + `deploy-selfhosted.yml.example` |
+| **Webhook (native)** ⚡⚡ | **~1-2s** | **0** | **NO runner at all** | VPS only | `webhook.sh` + GitHub Settings → Webhooks |
+| **Webhook (Actions)** ⚡⚡ | **~1-2s** | ~1 / deploy | yes (VM) | VPS only | `webhook.sh` + `deploy-webhook.yml.example` |
+| **Cron** | within N min | **0** | no | cPanel + VPS | `cron.sh` |
 
 - **Chhota project, kuch pushes** → Hosted Actions fine (simple).
 - **5-6 second chahte ho, VPS hai** → Self-hosted runner (`runner.sh`), zero VM boot.
-- **Sabse fast (~1-2s), VPS hai** → Webhook (`webhook.sh`), zero SSH handshake.
+- **Sabse fast (~1-2s) + ZERO runner** → **Native webhook**: GitHub seedha POST karta hai, runner bilkul nahi.
 - **Limit ki koi fikr nahi chahiye** → Cron (`cron.sh`), unlimited.
 
 All of them call the **same `auto_deploy.sh`** — switch anytime, nothing else changes.
+
+### 🌐 Native webhook (0 runner) — recommended for VPS
+
+GitHub ke **built-in webhook** se deploy karo — **koi Actions runner hi nahi chalta**, GitHub seedha aapke server pe POST karta hai (~1-2s, 0 Actions minutes):
+
+```bash
+# 1. Server pe listener chalu karo (VPS only):
+/bin/bash webhook.sh start
+# 2. config.sh mein secret set karo (random lambi string):
+#    DEPLOY_WEBHOOK_SECRET="<random-string>"
+# 3. GitHub → repo → Settings → Webhooks → Add webhook:
+#    Payload URL:  http://SERVER_IP:9000/webhook/deploy/
+#    Content type: application/json
+#    Secret:       <wohi random-string>
+#    Which events: Just the push event
+```
+
+Ab har push GitHub seedha server pe bhejega — HMAC-secret verified, branch `refs/heads/...` se milta hai, `auto_deploy.sh` chalta hai. **Runner = 0, limit = 0 use.**
 
 ---
 
@@ -244,18 +263,26 @@ GitHub **free plan** gives you **2,000 Actions minutes / month**. Each deploy co
 
 So Actions mode handles roughly **2,000 deploys/month** — enough for most projects.
 
-**Want ZERO Actions minutes?** Use the cron mode instead — the server checks the repo
-itself every few minutes and deploys when there's a new commit:
+**Want ZERO Actions minutes?** Three ways — pick one:
+
+| Mode | How | Runner? | Speed |
+|------|-----|---------|-------|
+| **Native webhook** ⭐ | GitHub Settings → Webhooks | **no** | ~1-2s |
+| **Cron** | `cron.sh` — server polls every N min | no | within N min |
+| **Self-hosted runner** | `runner.sh` | self-hosted | ~5-6s |
 
 ```bash
-# On the server, inside ~/deploy-kit/:
-/bin/bash cron.sh 2            # deploy every 2 minutes, 0 GitHub Actions
+# Native webhook (fastest, 0 runner):
+/bin/bash webhook.sh start
+
+# Or cron (cPanel/VPS, unlimited, polling):
+/bin/bash cron.sh 2            # every 2 minutes, 0 GitHub Actions
 /bin/bash cron.sh 5            # ... or every 5 minutes
 ```
 
 - No new commit → instant skip (SHA check) — idle checks cost nothing
 - Build / DB backup / migrate / restart / health / Telegram all work the same
-- Free plan = **unlimited cron** — the limit can never run out
+- Free plan = **unlimited** — the limit can never run out
 - Not on a VPS? cPanel users: `cron.sh` prints the exact line for **cPanel → Cron Jobs**
 
 > **Toggle:** running both? `touch ~/.deploy_github` + `SKIP_WHEN_FLAG=1` → cron skips
