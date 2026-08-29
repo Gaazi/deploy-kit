@@ -20,7 +20,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 echo "== 1. Syntax check (bash -n) =="
-for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh; do
+for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh cron.sh; do
   if bash -n "$f" 2>/dev/null; then ok "bash -n $f"; else bad "bash -n $f"; fi
 done
 
@@ -229,6 +229,27 @@ if [ "$RC" -ne 0 ] && grep -q "Build FAILED" "$TMP/deploy.log"; then
 else
   bad "build failure → deploy aborted with clear message"
   tail -3 "$TMP/deploy.log" | sed 's/^/     /'
+fi
+
+echo "== 10. cron.sh (zero GitHub Actions mode) =="
+cp cron.sh "$TMP/"
+if command -v crontab >/dev/null 2>&1; then
+  mkdir -p "$TMP/home3"
+  OUT="$(cd "$TMP" && HOME="$TMP/home3" bash cron.sh 2 2>&1)"
+else
+  OUT="$(cd "$TMP" && HOME="$TMP/home3" bash cron.sh 2 2>&1)"
+fi
+if echo "$OUT" | grep -q "auto_deploy.sh"; then
+  ok "cron.sh: cron line generated"
+else
+  bad "cron.sh: cron line generated"
+  echo "$OUT" | sed 's/^/     /'
+fi
+if echo "$OUT" | grep -qiE "cron (installed|jobs)"; then
+  ok "cron.sh: instructions shown"
+else
+  bad "cron.sh: instructions shown"
+  echo "$OUT" | sed 's/^/     /'
 fi
 
 echo ""
