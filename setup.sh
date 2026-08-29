@@ -21,21 +21,22 @@ echo "  Deploy Kit — Setup (sawal jawab)"
 echo "  * Enter dabao = default value use hogi"
 echo "============================================="
 
-SERVER_USER=$(ask "1/15 Server login user (cPanel username)" "cpuser")
-SERVER_HOST=$(ask "2/15 Server IP ya domain" "your-server.com")
-SSH_PORT=$(ask "3/15 SSH port (cPanel = 22)" "22")
-SITE_DOMAIN=$(ask "4/15 Live domain, bina https://" "your-domain.com")
-APP_DIR=$(ask "5/15 App folder server par (pura path)" "/home/$SERVER_USER/app")
-REPO_URL=$(ask "6/15 Git repo SSH URL (GitHub → Code → SSH)" "git@github.com:user/repo.git")
-APP_TYPE=$(ask "7/15 App type: python/node/php/static/docker" "python")
-RESTART_METHOD=$(ask "8/15 Restart: passenger/touch/systemctl/docker/php/none" "passenger")
-BUILD_CMD=$(ask "9/15 Build command (Node/static) — nahi to khaali" "")
-MIGRATE_CMD=$(ask "10/15 Migration command — nahi to khaali" "$( [ "$APP_TYPE" = python ] && echo '$PYTHON_BIN -m alembic upgrade head' || echo '' )")
-DB_BACKUP=$(ask "11/15 DB backup before migrate? yes/no" "no")
-DB_NAME=$(ask "12/15 DB name (agar backup yes)" "")
-DB_USER=$(ask "13/15 DB user (agar backup yes)" "")
-TELEGRAM_TOKEN=$(ask "14/15 Telegram bot token (optional, khaali chhor sakte)" "")
-TELEGRAM_CHAT=$(ask "15/15 Telegram chat ID (optional)" "")
+SERVER_USER=$(ask "1/16 Server login user (cPanel username)" "cpuser")
+SERVER_HOST=$(ask "2/16 Server IP ya domain" "your-server.com")
+SSH_PORT=$(ask "3/16 SSH port (cPanel = 22)" "22")
+SITE_DOMAIN=$(ask "4/16 Live domain, bina https://" "your-domain.com")
+APP_DIR=$(ask "5/16 App folder server par (pura path)" "/home/$SERVER_USER/app")
+REPO_URL=$(ask "6/16 Git repo SSH URL (GitHub → Code → SSH)" "git@github.com:user/repo.git")
+APP_TYPE=$(ask "7/16 App type: python/node/php/static/docker" "python")
+RESTART_METHOD=$(ask "8/16 Restart: passenger/touch/systemctl/docker/php/none" "passenger")
+BUILD_CMD=$(ask "9/16 Build command (Node/static) — nahi to khaali" "")
+MIGRATE_CMD=$(ask "10/16 Migration command — nahi to khaali" "$( [ "$APP_TYPE" = python ] && echo '$PYTHON_BIN -m alembic upgrade head' || echo '' )")
+DB_BACKUP=$(ask "11/16 DB backup before migrate? yes/no" "no")
+DB_NAME=$(ask "12/16 DB name (agar backup yes)" "")
+DB_USER=$(ask "13/16 DB user (agar backup yes)" "")
+TELEGRAM_TOKEN=$(ask "14/16 Telegram bot token (optional, khaali chhor sakte)" "")
+TELEGRAM_CHAT=$(ask "15/16 Telegram chat ID (optional)" "")
+HEALTH_URL=$(ask "16/16 Health check URL (optional — Enter = skip)" "")
 
 cat > config.sh <<EOF
 # ── Deploy Kit config (setup.sh se bana — $(date '+%F %T')) ──
@@ -68,6 +69,9 @@ DB_NAME="$DB_NAME"
 # ── Notifications ──
 TELEGRAM_BOT_TOKEN="$TELEGRAM_TOKEN"
 TELEGRAM_CHAT_ID="$TELEGRAM_CHAT"
+
+# ── Health check (optional) ──
+HEALTH_URL="$HEALTH_URL"
 
 # ── Git / Advanced ──
 DEPLOY_KEY=""

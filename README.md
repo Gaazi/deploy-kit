@@ -80,14 +80,16 @@ nano config.sh
 | `PHP_FPM_SERVICE` | PHP project | php-fpm service name | `php8.2-fpm` |
 | `DB_BACKUP` | DB backup chahiye? | yes/no | `yes` |
 | `DB_TYPE` / `DB_HOST` / `DB_USER` / `DB_PASS` / `DB_NAME` | Server DB panel | DB details | `mysql` / `localhost` / user / pass / name |
-| `TELEGRAM_BOT_TOKEN` | @BotFather se | Token | `123:ABC...` |
-| `TELEGRAM_CHAT_ID` | Telegram mein bot se message | Chat ID | `-100123...` |
+| `TELEGRAM_BOT_TOKEN` | @BotFather se (optional) | Token | `123:ABC...` |
+| `TELEGRAM_CHAT_ID` | Telegram mein bot se message (optional) | Chat ID | `-100123...` |
+| `HEALTH_URL` | Health check URL (optional) | Full URL | `https://myapp.com/health` |
 | `DEPLOY_KEY` | GitHub deploy key ka path | Key file | `/home/cpuser/.ssh/deploy_key` |
 | `TOGGLE_FLAG` / `SKIP_WHEN_FLAG` | Toggle system (optional) | Flag path + `1` | — |
 | `DEFAULT_BRANCH` | Default deploy branch | Branch | `main` |
 | `LOG_FILE` | Log kahan | Path | `/home/cpuser/deploy.log` |
 
 **Rule:** Jo cheez aapke project mein **nahi** hai → `""` (khaali) chhor do. Script automatically skip karega.
+**Sirf 2 zaroori hain:** `REPO_URL` + `APP_DIR`. Baqi **sab optional** — backup, build, migrate, restart, health check, Telegram, toggle — jo khali hai woh skip.
 
 ### Step 3: Permissions + Test
 
@@ -191,8 +193,8 @@ rm    ~/.deploy_github   # cron mode (GitHub skip)
 
 - **`config.sh` kabhi commit mat karo** — `.gitignore` mein hai, lekin phir bhi dhyan
 - `SSH_PRIVATE_KEY` **kisi se share mat karo**
-- DB backup optional hai — production par `yes` rakhna behtar
-- Health check + Telegram = deploy ka result hamesha pata
+- Sab kuch optional hai — jo config mein khali hai woh skip. Sirf `REPO_URL` + `APP_DIR` zaroori
+- DB backup production par `yes` rakhna behtar (safe deploy)
 
 ---
 

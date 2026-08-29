@@ -6,8 +6,9 @@
 #   usage: /bin/bash auto_deploy.sh <branch>
 #
 # Flow: git fetch → rsync → [build] → [db backup] → [migrate]
-#       → [restart] → health check → [telegram]
+#       → [restart] → [health check] → [telegram]
 #
+# [ ] = optional — config mein khaali chhor do to skip ho jata hai.
 # Koi project-specific info nahi — sab config.sh se aata hai.
 # ============================================================
 
@@ -25,6 +26,12 @@ APP_DIR="${APP_DIR:-/home/$SERVER_USER/app}"
 WORKSPACE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}/$BRANCH"
 LOG="${LOG_FILE:-/home/$SERVER_USER/deploy.log}"
 NOW="$(date '+%F %T')"
+
+# ── Required check (sirf yeh 2 zaroori hain — baqi sab optional) ─
+if [ -z "$REPO_URL" ] || [ -z "$APP_DIR" ]; then
+  echo "❌ config.sh mein REPO_URL aur APP_DIR zaroori hain — baqi sab optional."
+  exit 1
+fi
 
 log() { echo "$NOW: $1" >> "$LOG"; }
 
@@ -103,7 +110,7 @@ if [ -n "$MIGRATE_CMD" ]; then
   (cd "$APP_DIR" && eval "$MIGRATE_CMD") >> "$LOG" 2>&1
 fi
 
-# ── 6. Restart ──────────────────────────────────────────────
+# ── 6. Restart (optional — "" / "none" = skip) ───────────────
 case "$RESTART_METHOD" in
   passenger) mkdir -p "$APP_DIR/tmp" && touch "$APP_DIR/tmp/restart.txt" ;;
   touch)     touch "$APP_DIR/restart.txt" ;;
@@ -116,22 +123,29 @@ case "$RESTART_METHOD" in
   php)       if [ -n "$PHP_FPM_SERVICE" ]; then
                systemctl reload "$PHP_FPM_SERVICE" 2>>"$LOG" || service "$PHP_FPM_SERVICE" reload 2>>"$LOG" || true
              fi ;;
-  none)      : ;;
+  ""|none)   : ;;
 esac
-log "Restart done ($RESTART_METHOD)"
+[ -n "$RESTART_METHOD" ] && [ "$RESTART_METHOD" != "none" ] && log "Restart done ($RESTART_METHOD)"
 
 # ── 7. Record SHA ───────────────────────────────────────────
 echo "$NEW_SHA" > "$WORKSPACE/.deployed_sha"
 
-# ── 8. Health check ─────────────────────────────────────────
+# ── 8. Health check (optional — SITE_DOMAIN/HEALTH_URL khali = skip) ─
 sleep 8
-if curl -fsS "https://$SITE_DOMAIN/" >/dev/null 2>&1 || curl -fsS "http://127.0.0.1:8000/" >/dev/null 2>&1; then
-  notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH) — health OK
+HEALTH_URL="${HEALTH_URL:-https://$SITE_DOMAIN/}"
+if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
+  if curl -fsS -m 15 "$HEALTH_URL" >/dev/null 2>&1; then
+    notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH) — health OK
 <code>${NEW_SHA:0:10}</code>"
-  log "Health OK"
+    log "Health OK"
+  else
+    notify "❌ <b>Deploy done but health FAILED</b> ($SITE_DOMAIN) — rollback karo"
+    log "Health FAILED"
+  fi
 else
-  notify "❌ <b>Deploy done but health FAILED</b> ($SITE_DOMAIN) — rollback karo"
-  log "Health FAILED"
+  notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH)
+<code>${NEW_SHA:0:10}</code>"
+  log "Health check skipped (no URL)"
 fi
 
 echo "✅ Deploy complete: $BRANCH @ ${NEW_SHA:0:10}"
