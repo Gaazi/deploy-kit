@@ -62,7 +62,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 | If you change... | Also update these |
 |---|---|
 | **A config key** | `config.example.sh` (default + comment) + `setup.sh` heredoc + `setup-quick.sh` heredoc + `README.md` config table + `.agents/reference_config.md` |
-| **A script** (auto_deploy/rollback/detect/cron/runner) | Run `test.sh` — it covers syntax + integration |
+| **A script** (auto_deploy/rollback/detect/cron/runner/webhook) | Run `test.sh` — it covers syntax + integration |
 | **setup.sh / setup-quick.sh** | `config.example.sh` (keys must match) + `README.md` (setup methods) |
 | **keygen.sh** | Verify `--single-branch` not broken; test.sh covers keygen |
 | **Workflow YAML** (`.github/workflows/*.yml`) | Update the corresponding `.example` file + `.agents/reference_deploy_flow.md` |
@@ -74,7 +74,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 
 ---
 
-## File Structure (15 files + .agents/)
+## File Structure (17 files + .agents/)
 
 | File | Purpose |
 |------|---------|
@@ -86,10 +86,12 @@ When you modify the kit, this table tells you which files to update. Anything no
 | `detect.sh` | **Fully dynamic** — reads your repo, auto-detects APP_TYPE/BUILD/MIGRATE/RESTART |
 | `cron.sh` | **Zero GitHub Actions** — install cron job, deploy every N min, 0 Actions minutes |
 | `runner.sh` | **~6s deploys (VPS)** — install a self-hosted GitHub runner: no VM boot, 0 Actions minutes |
+| `webhook.sh` | **~1-2s deploys (VPS)** — socat HTTP listener: GitHub POST → auto_deploy.sh, secret-verified |
 | `test.sh` | Self-test — bash -n + missing-config errors + full local file:// integration test (deploy → skip → rollback) |
 | `config.example.sh` | Settings template — copy to `config.sh` and fill |
 | `.github/workflows/deploy.yml.example` | GitHub Actions trigger (hosted runner, ~1 min) |
 | `.github/workflows/deploy-selfhosted.yml.example` | GitHub Actions trigger (self-hosted runner, ~6s) |
+| `.github/workflows/deploy-webhook.yml.example` | GitHub Actions trigger (webhook, ~1-2s) |
 | `README.md` | User guide (3 setup methods, config table, checklist) |
 | `.gitignore` | Protects `config.sh` / secrets |
 | `LICENSE` | MIT |

@@ -45,6 +45,10 @@ DB_NAME=""
 TELEGRAM_BOT_TOKEN=""
 TELEGRAM_CHAT_ID=""
 
+# ── Webhook trigger (optional, VPS only) ────────────────────
+DEPLOY_WEBHOOK_SECRET=""              # "" = webhook disabled. Set a random string & match in GitHub secrets
+WEBHOOK_PORT="9000"                   # listener port (webhook.sh start)
+
 # ── Health check (optional — "" = skip) ─────────────────────
 HEALTH_URL=""                         # e.g. https://your-domain.com/health — "" to skip
 HEALTH_WAIT="8"                       # seconds to wait after restart before checking

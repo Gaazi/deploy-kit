@@ -5,10 +5,10 @@
 ## ⚡ Quick Reference (fastest lookup)
 
 - **What:** config-driven auto-deploy kit for ANY project (Python/Node/PHP/WordPress/Ruby/Java/Go/static/Docker) on cPanel or VPS
-- **Trigger options:** hosted Actions (~1 min) · self-hosted runner (~6s, `runner.sh`, VPS) · cron (`cron.sh`, 0 Actions) — all call the SAME `auto_deploy.sh`
+- **Trigger options:** hosted Actions (~1 min) · self-hosted runner (~6s, `runner.sh`, VPS) · webhook (~1-2s, `webhook.sh`, VPS) · cron (`cron.sh`, 0 Actions) — all call the SAME `auto_deploy.sh`
 - **Resource principle:** runner does ONLY the ~6s trigger; ALL deploy work runs on the server. Never add deploy logic to a workflow.
 - **Required config:** only `REPO_URL` + `APP_DIR`. Everything else optional — empty = skip, never crash.
-- **Test:** `/bin/bash test.sh` — 31 checks, run before committing. CI runs it on every push to main.
+- **Test:** `/bin/bash test.sh` — 34 checks, run before committing. CI runs it on every push to main.
 - **Deploy flow:** git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health → Telegram
 
 ## File map (what each script does)
@@ -23,6 +23,7 @@
 | `detect.sh` | Reads the repo → auto-sets APP_TYPE/BUILD/MIGRATE/RESTART in config.sh |
 | `cron.sh` | Install cron job → deploy every N min, 0 GitHub Actions |
 | `runner.sh` | Self-hosted runner install (VPS) → ~6s deploys, 0 Actions minutes |
+| `webhook.sh` | socat HTTP listener (VPS) → GitHub POST triggers deploy, ~1-2s, secret-verified |
 | `test.sh` | Self-test: syntax + missing-config + full local file:// integration |
 
 ## Config key categories (grep `reference_config.md` for full detail)
@@ -32,6 +33,7 @@
 - **App/Stack:** APP_TYPE, PYTHON_BIN, NODE_BIN, BUILD_CMD, MIGRATE_CMD, RESTART_METHOD, SERVICE_NAME, PM2_APP, SUPERVISOR_APP, WSGI_FILE, DOCKER_COMPOSE, PHP_FPM_SERVICE, APP_SUBDIR, HEALTH_URL, HEALTH_WAIT
 - **DB:** DB_BACKUP, DB_BACKUP_KEEP, DB_TYPE, DB_HOST, DB_USER, DB_PASS, DB_NAME
 - **Notify:** TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+- **Webhook (VPS):** DEPLOY_WEBHOOK_SECRET, WEBHOOK_PORT
 - **Git/Advanced:** DEPLOY_KEY, WORKSPACE_BASE, TOGGLE_FLAG, SKIP_WHEN_FLAG, DEFAULT_BRANCH, LOG_FILE, RSYNC_EXCLUDES
 
 ## Key design decisions (expensive to rediscover)
@@ -69,7 +71,8 @@
 ## History (latest first)
 
 - **Resource principle:** runner trigger only, server all work; `--single-branch` clone; documented in AGENTS.md + README + references
-- **Trigger choice:** hosted / self-hosted (`runner.sh`) / cron — README "Choose your trigger" table
+- **Trigger choice:** hosted / self-hosted (`runner.sh`) / webhook (`webhook.sh`) / cron — README "Choose your trigger" table
+- **Webhook mode (NEW):** `webhook.sh` (socat HTTP listener, VPS only, start/stop/status) + `deploy-webhook.yml.example` + `DEPLOY_WEBHOOK_SECRET`/`WEBHOOK_PORT` keys — ~1-2s deploys, 0 Actions minutes
 - **Runner-lite:** paths-ignore `docs/**`, `permissions: {}`, CI installs rsync only if missing
 - **Fully dynamic:** `detect.sh` auto-detects stack; `HEALTH_WAIT` key; zero hardcoded values
 - **Zero-Actions:** `cron.sh`; `DB_BACKUP_KEEP`
@@ -78,7 +81,7 @@
 - **All-stacks:** pm2/supervisor, SERVICE_NAME, APP_SUBDIR, sqlite, 9 app types
 - **Beginner:** YES/NO wizard, `keygen.sh`
 - **LITE workflow:** no checkout/build, 1 tiny SSH job
-- **test.sh:** self-test (31 checks)
+- **test.sh:** self-test (34 checks)
 - **RSYNC_EXCLUDES** config key; setup-quick parses all keys
 - **Robustness:** git-failure guard, rollback rebuild, postgres prune
 - **Dynamic config:** TOGGLE_FLAG, DEFAULT_BRANCH, LOG_FILE — 0 hardcoded paths

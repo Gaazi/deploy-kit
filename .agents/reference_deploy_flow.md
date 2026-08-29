@@ -78,6 +78,12 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 - Free GitHub = **2,000 Actions min/month**; each deploy ≈ 1 min (VM boot + ~6s job) → ~2,000 deploys/mo
 - **`cron.sh`** installs a server cron job (`*/N * * * * /bin/bash .../auto_deploy.sh <branch>`) — **0 Actions minutes**, deploy within N min. SHA check = idle runs are instant no-ops.
 - If `crontab` is unavailable (cPanel), `cron.sh` prints the exact line for **cPanel → Cron Jobs**.
+
+## Webhook trigger (~1-2s, VPS only)
+
+- `webhook.sh` — socat HTTP listener (start/stop/status). GitHub POSTs to `http://SERVER:PORT/webhook/deploy/` with `X-Deploy-Secret` header → handler verifies secret → `auto_deploy.sh <branch>` in background. ~1-2s from push to deploy start, 0 Actions minutes.
+- Depends on `socat` (apt install socat). Pair with `deploy-webhook.yml.example`.
+- GitHub secrets needed: `DEPLOY_WEBHOOK_SECRET` (same value as server's config.sh), `DEPLOY_WEBHOOK_URL` (the public URL).
 - Toggle: with Actions + cron both present, `touch ~/.deploy_github` + `SKIP_WHEN_FLAG=1` → cron skips (Actions handles it). Remove flag → cron deploys again.
 
 ## Self-hosted runner (~6s deploys, VPS only)

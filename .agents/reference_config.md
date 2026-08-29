@@ -51,6 +51,14 @@ Backup behavior: dumps to `$APP_DIR/backups/predeploy/`, keeps `DB_BACKUP_KEEP` 
 | `TELEGRAM_BOT_TOKEN` | @BotFather token — `""` = no alerts |
 | `TELEGRAM_CHAT_ID` | Chat ID — `""` = no alerts |
 
+## Webhook trigger (optional, VPS only)
+| Key | What | Default |
+|-----|------|---------|
+| `DEPLOY_WEBHOOK_SECRET` | Random string — must match GitHub secret `DEPLOY_WEBHOOK_SECRET`; `""` = webhook disabled | `""` |
+| `WEBHOOK_PORT` | Port the socat listener binds to | `9000` |
+
+Webhook listener: `webhook.sh start|stop|status`. Needs socat (VPS only).
+
 ## Health check (optional)
 | Key | What |
 |-----|------|

@@ -40,7 +40,7 @@ Runner kuch aur nahi karta — na checkout, na build, na migrate. Sab kam resour
 
 ---
 
-## 📁 Files (15 + .agents/)
+## 📁 Files (17 + .agents/)
 
 | File | What it does |
 |------|---------------|
@@ -51,11 +51,13 @@ Runner kuch aur nahi karta — na checkout, na build, na migrate. Sab kam resour
 | `detect.sh` | **Fully dynamic** — reads your repo and auto-sets APP_TYPE / build / migrate / restart by itself |
 | `cron.sh` | **Zero GitHub Actions** — one command installs a cron job: deploy every N min, 0 Actions minutes |
 | `runner.sh` | **~6s deploys (VPS)** — installs a self-hosted GitHub runner on the server: no VM boot, 0 Actions minutes |
+| `webhook.sh` | **~1-2s deploys (VPS)** — HTTP listener: GitHub POST → auto_deploy.sh, 0 Actions minutes |
 | `auto_deploy.sh` | Deploy script — git → rsync → build → backup → migrate → restart → health → telegram |
 | `rollback.sh` | Go back to the previous commit + DB restore |
 | `test.sh` | **Self-test** — syntax check + full local deploy/rollback test (no network) |
 | `.github/workflows/deploy.yml.example` | GitHub Actions trigger (hosted runner, ~1 min) |
 | `.github/workflows/deploy-selfhosted.yml.example` | GitHub Actions trigger (self-hosted runner, ~6s) |
+| `.github/workflows/deploy-webhook.yml.example` | GitHub Actions trigger (webhook, ~1-2s) |
 | `README.md` | This guide |
 | `AGENTS.md` + `.agents/` | Agent rules + memory (for AI agents / future developers) |
 | `LICENSE` | MIT License — for a public repo |
@@ -125,6 +127,8 @@ nano config.sh
 | `DB_TYPE` / `DB_HOST` / `DB_USER` / `DB_PASS` / `DB_NAME` | Server DB panel (sqlite: `DB_NAME` = file path in app folder) | DB details | `mysql` / `localhost` / user / pass / name |
 | `TELEGRAM_BOT_TOKEN` | From @BotFather (optional) | Token | `123:ABC...` |
 | `TELEGRAM_CHAT_ID` | Message from the bot on Telegram (optional) | Chat ID | `-100123...` |
+| `DEPLOY_WEBHOOK_SECRET` | Webhook trigger (VPS only) — random string, match in GitHub secrets | `""` = disabled | `abc...` |
+| `WEBHOOK_PORT` | Webhook listener port | Number | `9000` |
 | `HEALTH_URL` | Health check URL (optional) | Full URL | `https://myapp.com/health` |
 | `HEALTH_WAIT` | Seconds to wait after restart before checking | Number | `8` |
 | `DEPLOY_KEY` | Path to the GitHub deploy key | Key file | `/home/cpuser/.ssh/deploy_key` |
@@ -216,10 +220,12 @@ Push (dev/demo/main) → GitHub Actions (~6s) → server deploy → Telegram ale
 |---------|-------------|------------------------|----------|-------|
 | **Hosted Actions** | ~1 min (VM boot + ~6s) | ~1 / deploy | cPanel + VPS | `deploy.yml.example` |
 | **Self-hosted runner** ⚡ | **~5-6s** (no VM boot) | **0** | VPS only | `runner.sh` + `deploy-selfhosted.yml.example` |
+| **Webhook** ⚡⚡ | **~1-2s** | **0** | VPS only | `webhook.sh` + `deploy-webhook.yml.example` |
 | **Cron** | within N min | **0** | cPanel + VPS | `cron.sh` |
 
 - **Chhota project, kuch pushes** → Hosted Actions fine (simple).
 - **5-6 second chahte ho, VPS hai** → Self-hosted runner (`runner.sh`), zero VM boot.
+- **Sabse fast (~1-2s), VPS hai** → Webhook (`webhook.sh`), zero SSH handshake.
 - **Limit ki koi fikr nahi chahiye** → Cron (`cron.sh`), unlimited.
 
 All of them call the **same `auto_deploy.sh`** — switch anytime, nothing else changes.
@@ -330,7 +336,7 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (15 files)
+- [ ] `~/deploy-kit/` on the server (17 files)
 - [ ] Created `config.sh` (wizard: `/bin/bash setup.sh`)
 - [ ] `chmod +x *.sh`
 - [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅

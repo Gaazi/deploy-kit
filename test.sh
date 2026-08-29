@@ -20,7 +20,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 echo "== 1. Syntax check (bash -n) =="
-for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh cron.sh detect.sh runner.sh; do
+for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh cron.sh detect.sh runner.sh webhook.sh; do
   if bash -n "$f" 2>/dev/null; then ok "bash -n $f"; else bad "bash -n $f"; fi
 done
 
@@ -279,6 +279,22 @@ echo "$OUT" | grep -q "build" && ok "detect: build command found" || bad "detect
 # check that config.sh was updated
 grep -q 'APP_TYPE="node"' "$TMP/detect-kit/config.sh" && ok "detect: APP_TYPE applied to config.sh" || bad "detect: APP_TYPE applied to config.sh"
 grep -q 'BUILD_CMD="npm install && npm run build"' "$TMP/detect-kit/config.sh" && ok "detect: BUILD_CMD applied" || bad "detect: BUILD_CMD applied"
+
+echo "== 12. webhook.sh handler (HTTP listener, VPS) =="
+mkdir -p "$TMP/webhook-kit"
+cp webhook.sh auto_deploy.sh "$TMP/webhook-kit/"
+cat > "$TMP/webhook-kit/config.sh" <<CFG
+DEPLOY_WEBHOOK_SECRET="testsecret"
+LOG_FILE="$TMP/deploy.log"
+CFG
+# simulate a GitHub webhook POST: correct secret → expect 200 OK
+BODY='{"branch":"main","sha":"abc123"}'
+LEN=$(printf '%s' "$BODY" | wc -c)
+RESP="$(printf 'POST /webhook/deploy/ HTTP/1.1\r\nHost: x\r\nX-Deploy-Secret: testsecret\r\nContent-Length: %s\r\n\r\n%s' "$LEN" "$BODY" | (cd "$TMP/webhook-kit" && bash webhook.sh handler 2>/dev/null))"
+echo "$RESP" | grep -q "200 OK" && ok "webhook: valid secret → 200" || bad "webhook: valid secret → 200"
+# wrong secret → expect 403
+RESP2="$(printf 'POST /webhook/deploy/ HTTP/1.1\r\nHost: x\r\nX-Deploy-Secret: wrong\r\nContent-Length: %s\r\n\r\n%s' "$LEN" "$BODY" | (cd "$TMP/webhook-kit" && bash webhook.sh handler 2>/dev/null))"
+echo "$RESP2" | grep -q "403" && ok "webhook: wrong secret → 403" || bad "webhook: wrong secret → 403"
 
 echo ""
 echo "============================================="
