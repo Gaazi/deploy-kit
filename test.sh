@@ -207,6 +207,15 @@ else
 fi
 [ ! -d "$LOCKD" ] && ok "lock: released after deploy" || bad "lock: released after deploy"
 
+# empty PID file (crashed between mkdir and pid write) → also stale, must be cleaned
+mkdir -p "$LOCKD" && : > "$LOCKD/pid"
+(cd "$TMP/kit" && bash auto_deploy.sh main >/dev/null 2>&1)
+if [ -f "$TMP/ws2/main/.deployed_sha" ]; then
+  ok "lock: empty-PID lock (crash leftover) cleaned + deploy ran"
+else
+  bad "lock: empty-PID lock (crash leftover) cleaned + deploy ran"
+fi
+
 echo "== 9. build failure → deploy aborts =="
 echo "build-fail" > "$SRC/web/page.html"
 git -C "$SRC" add -A

@@ -23,7 +23,8 @@ LOCK_DIR="$WORKSPACE_BASE/.deploy-lock"
 mkdir -p "$WORKSPACE_BASE"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   LOCK_PID="$(cat "$LOCK_DIR/pid" 2>/dev/null)"
-  if [ -n "$LOCK_PID" ] && [ -f "$LOCK_DIR/pid" ] && ! kill -0 "$LOCK_PID" 2>/dev/null; then
+  # stale if: pid file empty (crashed between mkdir and pid write) OR pid is a dead process
+  if [ ! -s "$LOCK_DIR/pid" ] || { [ -n "$LOCK_PID" ] && ! kill -0 "$LOCK_PID" 2>/dev/null; }; then
     rm -rf "$LOCK_DIR"
     mkdir "$LOCK_DIR" 2>/dev/null || { echo "❌ A deploy is running — wait, then retry rollback"; exit 1; }
   else
