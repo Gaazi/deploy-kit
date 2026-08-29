@@ -6,12 +6,16 @@
 
 ```
 git push (any branch)
-  → GitHub Actions workflow (deploy.yml.example) triggers (~6s)
-      - no checkout, no Docker — direct ssh fire-and-forget:
+  → GitHub Actions workflow (deploy.yml.example) triggers (~6s)      ← RUNNER: sirf trigger
+      - no checkout, no build, no migrate — only the SSH fire-and-forget
         ssh user@server "nohup /bin/bash ~/deploy-kit/auto_deploy.sh <branch> &"
-  → server: auto_deploy.sh <branch> runs in background (nohup)
-  → git fetch workspace → rsync to APP_DIR → optional steps → health → Telegram
+  → server: auto_deploy.sh <branch> runs in background (nohup)       ← SERVER: sara kaam
+  → git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health → Telegram
 ```
+
+**Resource principle (keep):** the runner does ONLY the ~6s trigger — every real step
+(fetch, rsync, build, backup, migrate, restart, health, Telegram) runs on the server.
+Never add deploy work to the workflow — it belongs in auto_deploy.sh (or rollback.sh).
 
 ## auto_deploy.sh steps (numbered)
 
