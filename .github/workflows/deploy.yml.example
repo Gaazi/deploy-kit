@@ -1,11 +1,12 @@
-# GitHub Actions workflow — DEPLOY KIT (GENERIC)
+# GitHub Actions workflow — DEPLOY KIT (GENERIC, LITE)
 # ------------------------------------------------------------
-# Copy this file to YOUR repo: .github/workflows/deploy.yml
-# Fill: branch names + server secrets (see README).
-# Fire-and-forget: GitHub run ~6s, deploy runs in the background on the server.
+# Copy to your repo: .github/workflows/deploy.yml
+# Edit: branch names + 4 GitHub Secrets (see README).
+# LITE: no checkout, no build here — ONE tiny SSH job fires the
+# deploy on the server in the background (~6s job, fire-and-forget).
 # ============================================================
 
-name: "Deploy"
+name: Deploy
 
 on:
   push:
@@ -18,22 +19,18 @@ concurrency:
 
 jobs:
   deploy:
-    name: Trigger Server Deploy via SSH
     runs-on: ubuntu-latest
     timeout-minutes: 1
-
     steps:
-      - name: Trigger Deploy via SSH (fire-and-forget)
+      - name: Fire deploy on the server
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
         run: |
-          echo "🚀 Deploy trigger: ${{ github.ref_name }} (${{ github.sha }})"
-          echo "$SSH_PRIVATE_KEY" > /tmp/deploy_key
-          chmod 600 /tmp/deploy_key
-          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
-            -o BatchMode=yes -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "nohup /bin/bash /home/$SERVER_USER/deploy-kit/auto_deploy.sh ${{ github.ref_name }} >> /home/$SERVER_USER/deploy.log 2>&1 &"
-          rm -f /tmp/deploy_key
+          echo "$SSH_PRIVATE_KEY" > /tmp/dk
+          chmod 600 /tmp/dk
+          ssh -i /tmp/dk -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes \
+            -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
+            "nohup /bin/bash ~/deploy-kit/auto_deploy.sh ${{ github.ref_name }} >> ~/deploy.log 2>&1 &"
