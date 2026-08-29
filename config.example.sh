@@ -34,6 +34,7 @@ APP_SUBDIR=""                         # monorepo: deploy only this subfolder (""
 
 # ── Database (optional — backup before migrate) ─────────────
 DB_BACKUP="no"                        # yes | no
+DB_BACKUP_KEEP="7"                    # how many old dumps to keep (lighter = smaller)
 DB_TYPE="mysql"                       # mysql | postgres | sqlite (sqlite: DB_NAME = file path inside APP_DIR)
 DB_HOST="localhost"
 DB_USER=""
