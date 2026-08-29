@@ -25,7 +25,7 @@ git push (any branch)
 6. **Migrate** — if `MIGRATE_CMD` set → run in APP_DIR. **Failure → Telegram fail alert + abort** (hint: restore DB dump then rollback).
 7. **Restart** — per `RESTART_METHOD` (passenger → touch tmp/restart.txt; systemctl → restart `$SERVICE_NAME` or `$SITE_DOMAIN`; pm2 → `pm2 restart $PM2_APP`; supervisor → `supervisorctl restart $SUPERVISOR_APP`; docker → compose down/up; php → reload fpm; none/"" → skip). All restart failures are non-fatal (`|| true`) — deploy never crashes because a service binary is missing.
 8. **Record SHA** — write `.deployed_sha` in workspace
-9. **Health check** — only if HEALTH_URL resolves (empty → skip, **no 8s sleep**); `sleep 8` → `curl -m 15`; OK → success alert, fail → warning alert
+9. **Health check** — only if HEALTH_URL resolves (empty → skip, **no sleep**); `sleep $HEALTH_WAIT` (default 8) → `curl -m 15`; OK → success alert, fail → warning alert
 10. **Telegram** — start/success/fail alerts via `notify()` (only if token+chat set)
 
 Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).

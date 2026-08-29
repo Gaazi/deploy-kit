@@ -55,6 +55,7 @@ Any change → commit + push to `main`. Nothing else to sync — this is a fully
 - Better+lite pass: deploy lock (mkdir+pid, stale auto-clean, rollback shares it), BUILD/MIGRATE failure → abort + Telegram fail alert, log rotation at 1MB, workflow paths-ignore for *.md (0 runner time on doc pushes), README server-download one-liner; test.sh = 22 checks.
 - STANDALONE (2026-08-29): kit is 100% its own project — no external repo folder, no multi-branch sync. Sync = commit + push to main only. ()
 - Zero-Actions pass: cron.sh (server cron deploy every N min = 0 GitHub Actions minutes; free-plan 2000min/mo never runs out; cPanel fallback prints the Cron Jobs line). DB_BACKUP_KEEP config key (default 7, smaller = lighter disk). README "GitHub free limits" section. test.sh covers cron.sh.
+- Fully dynamic pass: detect.sh — clones the workspace, auto-detects app type + build/migrate/restart commands from repo files (package.json, manage.py, Dockerfile, etc.), applies to config.sh on confirmation. HEALTH_WAIT config key replaces hardcoded sleep 8. No hardcoded values left.
 
 ## Troubleshooting quick
 - `config.sh not found` → copy example first

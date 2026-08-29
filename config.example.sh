@@ -47,6 +47,7 @@ TELEGRAM_CHAT_ID=""
 
 # ── Health check (optional — "" = skip) ─────────────────────
 HEALTH_URL=""                         # e.g. https://your-domain.com/health — "" to skip
+HEALTH_WAIT="8"                       # seconds to wait after restart before checking
 
 # ── Git ─────────────────────────────────────────────────────
 DEPLOY_KEY=""                         # path to SSH deploy key ("" = use default ssh)

@@ -55,6 +55,7 @@ Backup behavior: dumps to `$APP_DIR/backups/predeploy/`, keeps `DB_BACKUP_KEEP` 
 | Key | What |
 |-----|------|
 | `HEALTH_URL` | Full URL to check after deploy — `""` = skip. Default fallback `https://$SITE_DOMAIN/`. Uses `curl -m 15` (never hangs). |
+| `HEALTH_WAIT` | Seconds to sleep after restart before checking — `""` = 8. |
 
 ## Git / Advanced (optional)
 | Key | What | Default |

@@ -19,7 +19,7 @@ GitHub push (dev/demo/main)
 
 ---
 
-## 📁 Files (12 + .agents/)
+## 📁 Files (13 + .agents/)
 
 | File | What it does |
 |------|---------------|
@@ -27,6 +27,7 @@ GitHub push (dev/demo/main)
 | `setup.sh` | **Beginner setup wizard** — YES/NO questions, press Enter for recommended, creates config.sh itself |
 | `setup-quick.sh` | **Paste setup** — paste all your values at once, no questions |
 | `keygen.sh` | **SSH key helper** — creates the key + prints 3 ready-to-copy blocks for GitHub (~2 min) |
+| `detect.sh` | **Fully dynamic** — reads your repo and auto-sets APP_TYPE / build / migrate / restart by itself |
 | `cron.sh` | **Zero GitHub Actions** — one command installs a cron job: deploy every N min, 0 Actions minutes |
 | `auto_deploy.sh` | Deploy script — git → rsync → build → backup → migrate → restart → health → telegram |
 | `rollback.sh` | Go back to the previous commit + DB restore |
