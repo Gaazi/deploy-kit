@@ -20,7 +20,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 echo "== 1. Syntax check (bash -n) =="
-for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh; do
+for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh; do
   if bash -n "$f" 2>/dev/null; then ok "bash -n $f"; else bad "bash -n $f"; fi
 done
 
@@ -111,6 +111,27 @@ else
   echo "     --- deploy.log ---"
   sed 's/^/     /' "$TMP/deploy.log"
   echo "     --- app ls ---"; ls -la "$APP"
+fi
+
+echo "== 5. keygen.sh (SSH key + GitHub copy-paste helper) =="
+mkdir -p "$TMP/k2"
+cp keygen.sh "$TMP/k2/"
+printf 'SERVER_HOST="server.com"\nSERVER_USER="cpuser"\nSSH_PORT="2222"\n' > "$TMP/k2/config.sh"
+(cd "$TMP/k2" && HOME="$TMP/home2" bash keygen.sh >/dev/null 2>&1)
+if [ -f "$TMP/home2/.ssh/deploy_key" ] && [ -f "$TMP/home2/.ssh/deploy_key.pub" ]; then
+  ok "keygen: key pair created"
+else
+  bad "keygen: key pair created"
+fi
+if grep -q "^DEPLOY_KEY=\"$TMP/home2/.ssh/deploy_key\"" "$TMP/k2/config.sh"; then
+  ok "keygen: DEPLOY_KEY written to config.sh"
+else
+  bad "keygen: DEPLOY_KEY written to config.sh"
+fi
+if grep -qF "$(cat "$TMP/home2/.ssh/deploy_key.pub")" "$TMP/home2/.ssh/authorized_keys"; then
+  ok "keygen: authorized_keys updated"
+else
+  bad "keygen: authorized_keys updated"
 fi
 
 echo ""

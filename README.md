@@ -19,13 +19,14 @@ GitHub push (dev/demo/main)
 
 ---
 
-## 📁 Files (7 + .agents/)
+## 📁 Files (8 + .agents/)
 
 | File | What it does |
 |------|---------------|
 | `config.example.sh` | **Settings template** — create `config.sh` and fill in your values |
-| `setup.sh` | **Interactive setup** — creates config.sh itself through questions & answers |
+| `setup.sh` | **Beginner setup wizard** — YES/NO questions, press Enter for recommended, creates config.sh itself |
 | `setup-quick.sh` | **Paste setup** — paste all your values at once, no questions |
+| `keygen.sh` | **SSH key helper** — creates the key + prints 3 ready-to-copy blocks for GitHub (~2 min) |
 | `auto_deploy.sh` | Deploy script — git → rsync → build → backup → migrate → restart → health → telegram |
 | `rollback.sh` | Go back to the previous commit + DB restore |
 | `test.sh` | **Self-test** — syntax check + full local deploy/rollback test (no network) |
@@ -55,8 +56,9 @@ cd ~/deploy-kit
 **3 ways:**
 
 ```bash
-# Method A — Interactive (setup.sh — questions & answers, creates it itself):
+# Method A — Beginner Wizard (YES/NO questions, Enter = recommended, best for beginners):
 /bin/bash setup.sh
+#   → at the end it asks: "Set up SSH keys now?" → say yes → keygen.sh runs automatically
 
 # Method B — Paste (setup-quick.sh — paste all values at once, no questions):
 /bin/bash setup-quick.sh
@@ -113,7 +115,22 @@ chmod +x auto_deploy.sh rollback.sh test.sh
 
 **If the manual deploy works → do the GitHub setup.**
 
-### Step 4: GitHub Actions setup
+### Step 4: SSH keys (1 command — copy-paste ready)
+
+```bash
+# On the server, inside ~/deploy-kit/:
+/bin/bash keygen.sh
+```
+
+It creates the SSH key, sets `DEPLOY_KEY` in `config.sh`, and prints **3 copy-paste blocks**:
+
+1. **Public key** → GitHub repo → **Settings → Deploy keys → Add deploy key** (title: `deploy-kit`)
+2. **Private key** → GitHub repo → **Settings → Secrets → Actions → New repository secret** → name `SSH_PRIVATE_KEY`, paste everything from `-----BEGIN` to `-----END`
+3. **`SERVER_HOST` / `SERVER_USER` / `SSH_PORT`** → same Secrets page, 3 more secrets (values from your config)
+
+That's it — one key pair works both ways (server → GitHub clone + GitHub → server trigger). For each new repo, repeat only block 1.
+
+### Step 5: GitHub Actions setup
 
 ```bash
 # In your project repo:
@@ -122,19 +139,6 @@ cp ~/deploy-kit/.github/workflows/deploy.yml.example .github/workflows/deploy.ym
 ```
 
 Edit your **branch names** in `deploy.yml` (default: dev/demo/main).
-
-### Step 5: GitHub Secrets
-
-```
-GitHub → Repo → Settings → Secrets and variables → Actions → New repository secret
-```
-
-| Secret | Value |
-|--------|-------|
-| `SSH_PRIVATE_KEY` | The server's **private key** (content of `~/.ssh/id_ed25519` on the server) |
-| `SERVER_HOST` | Server IP/domain |
-| `SERVER_USER` | Server user |
-| `SSH_PORT` | `22` (or custom) |
 
 ### Step 6: Push it 🎉
 
@@ -211,12 +215,14 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (7 files)
-- [ ] Created `config.sh` + your values
-- [ ] `chmod +x auto_deploy.sh rollback.sh`
-- [ ] Manual test: `/bin/bash auto_deploy.sh main` ✅
+- [ ] `~/deploy-kit/` on the server (8 files)
+- [ ] Created `config.sh` (wizard: `/bin/bash setup.sh`)
+- [ ] `chmod +x auto_deploy.sh rollback.sh test.sh keygen.sh`
+- [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅
+- [ ] GitHub Deploy key added (keygen block 1)
+- [ ] GitHub Secrets (4) added (keygen blocks 2 + 3)
 - [ ] `.github/workflows/deploy.yml` in your repo
-- [ ] GitHub Secrets (4) set
+- [ ] Manual test: `/bin/bash auto_deploy.sh main` ✅
 - [ ] Push → Actions run ✅ → Telegram alert ✅
 
 ---

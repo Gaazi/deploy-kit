@@ -46,14 +46,15 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 
 ---
 
-## File Structure (7 files + .agents/)
+## File Structure (8 files + .agents/)
 
 | File | Purpose |
 |------|---------|
 | `auto_deploy.sh` | Main deploy script — git → rsync → optional steps → health → telegram |
 | `rollback.sh` | Roll back to previous commit + optional DB restore |
-| `setup.sh` | Interactive setup (questions & answers, 16 questions) |
+| `setup.sh` | Beginner YES/NO setup wizard (Enter = recommended, creates config.sh) |
 | `setup-quick.sh` | Paste setup (KEY=VALUE lines, Ctrl+D, no questions) |
+| `keygen.sh` | SSH key helper — one key pair both ways + 3 copy-paste blocks for GitHub |
 | `config.example.sh` | Settings template — copy to `config.sh` and fill |
 | `.github/workflows/deploy.yml.example` | GitHub Actions trigger (fire-and-forget ~6s) |
 | `README.md` | User guide (3 setup methods, config table, checklist) |

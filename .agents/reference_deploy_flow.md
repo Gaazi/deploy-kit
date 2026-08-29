@@ -62,7 +62,16 @@ git push (any branch)
 - `concurrency` group — overlapping runs cancel (save minutes)
 - No checkout (fastest); SSH with private key from secrets; `BatchMode=yes`; `ConnectTimeout=10`
 - Fire-and-forget: `nohup ... &` — run completes in ~6s, deploy continues on server
-- GitHub Secrets needed: `SERVER_IP`, `SERVER_USER`, `SSH_PORT`, `SSH_PRIVATE_KEY`
+- GitHub Secrets needed: `SERVER_HOST`, `SERVER_USER`, `SSH_PORT`, `SSH_PRIVATE_KEY`
+- **`keygen.sh` prints all 4 secret values + the Deploy key — pure copy-paste, no manual key work**
+
+## SSH keys (keygen.sh)
+
+- ONE key pair, works both ways:
+  - server → GitHub: private key = `DEPLOY_KEY` (config), public key → repo **Deploy keys** (allows clone)
+  - GitHub → server: private key → Actions secret `SSH_PRIVATE_KEY`, public key appended to `~/.ssh/authorized_keys` (allows the SSH trigger)
+- cPanel note: if `authorized_keys` write is blocked, import/authorize the public key via cPanel SSH Access UI
+- Deploy keys are per-repo — for each new repo repeat only the Deploy-key step
 
 ## Troubleshooting
 

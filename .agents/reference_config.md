@@ -54,7 +54,7 @@ Backup behavior: dumps to `$APP_DIR/backups/predeploy/`, keeps last 7, `--single
 ## Git / Advanced (optional)
 | Key | What | Default |
 |-----|------|---------|
-| `DEPLOY_KEY` | Path to SSH deploy key — `""` = default ssh | `""` |
+| `DEPLOY_KEY` | Path to SSH deploy key — `""` = default ssh. **Run `keygen.sh` to create it + get GitHub copy-paste blocks** | `~/.ssh/deploy_key` |
 | `WORKSPACE_BASE` | Clone workspace base | `/home/$USER/deploy-workspace` |
 | `TOGGLE_FLAG` | Flag path for toggle system | `/home/$USER/.deploy_github` |
 | `SKIP_WHEN_FLAG` | If set + flag exists → deploy skipped | `""` |
