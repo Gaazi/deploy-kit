@@ -76,11 +76,12 @@ fi
 
 # restore pre-migration DB dump if present
 LATEST_DUMP="$(ls -1t "$APP_DIR/backups/predeploy/"*.sql "$APP_DIR/backups/predeploy/"*.db 2>/dev/null | head -1)"
-if [ -n "$LATEST_DUMP" ] && [ -n "$DB_NAME" ] && [ -n "$DB_USER" ]; then
+# sqlite needs no DB_USER — only DB_NAME (file path inside APP_DIR)
+if [ -n "$LATEST_DUMP" ] && [ -n "$DB_NAME" ]; then
   echo "🔄 Restoring DB: $LATEST_DUMP"
-  if [ "$DB_TYPE" = "mysql" ]; then
+  if [ "$DB_TYPE" = "mysql" ] && [ -n "$DB_USER" ]; then
     MYSQL_PWD="$DB_PASS" mysql -h "$DB_HOST" -u "$DB_USER" "$DB_NAME" < "$LATEST_DUMP"
-  elif [ "$DB_TYPE" = "postgres" ]; then
+  elif [ "$DB_TYPE" = "postgres" ] && [ -n "$DB_USER" ]; then
     PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" "$DB_NAME" < "$LATEST_DUMP"
   elif [ "$DB_TYPE" = "sqlite" ]; then
     cp "$LATEST_DUMP" "$APP_DIR/$DB_NAME"
