@@ -29,7 +29,7 @@
 ## Sync strategy (STANDALONE — 2 places only)
 1. Standalone repo: `/run/media/ghazi/Data/coding/projects/deploy-kit` → `git@github.com:Gaazi/deploy-kit.git` (branch main, PRIVATE — public later)
 2. User's server `~/deploy-kit/` (manual copy)
-Any change → commit + push to `main`. Nothing else to sync. has NO relation to any other project.
+Any change → commit + push to `main`. Nothing else to sync — this is a fully standalone kit.
 
 ## History
 - v1: generic auto_deploy.sh + rollback.sh + config.example.sh (git → rsync → optional steps)
@@ -46,7 +46,7 @@ Any change → commit + push to `main`. Nothing else to sync. has NO relation to
 - Beginner pass: setup.sh rewritten as YES/NO wizard (Enter = recommended; restart method auto-set from APP_TYPE; DB_PASS now asked; auto-runs keygen.sh at the end). NEW keygen.sh — ONE key pair both ways (server→GitHub deploy key + GitHub→server authorized_keys), sets DEPLOY_KEY in config.sh, prints 3 copy-paste blocks (Deploy key, SSH_PRIVATE_KEY, SERVER_HOST/USER/PORT secrets). test.sh now covers keygen too (15 checks).
 - All-stacks pass: restart methods +pm2/+supervisor (non-fatal `|| true`), SERVICE_NAME for systemctl (default SITE_DOMAIN), APP_SUBDIR for monorepos (abort if missing), sqlite DB backup/restore (file copy), wizard covers 9 app types (python/node/php/wordpress/ruby/java/go/static/docker) with per-type build/migrate hints; test.sh = 18 checks.
 - Better+lite pass: deploy lock (mkdir+pid, stale auto-clean, rollback shares it), BUILD/MIGRATE failure → abort + Telegram fail alert, log rotation at 1MB, workflow paths-ignore for *.md (0 runner time on doc pushes), README server-download one-liner; test.sh = 22 checks.
-- DECOUPLED from related project (2026-08-29): kit is 100% standalone — no related repo folder, no deploy/dev branch sync. Sync = commit + push to main only.
+- STANDALONE (2026-08-29): kit is 100% its own project — no external repo folder, no multi-branch sync. Sync = commit + push to main only.
 
 ## Troubleshooting quick
 - `config.sh not found` → copy example first
@@ -57,5 +57,5 @@ Any change → commit + push to `main`. Nothing else to sync. has NO relation to
 - Rsync didn't pick up a change → same file size + same mtime (two pushes within the same second) — standard rsync quick-check limitation, re-push or touch file
 
 ## CURRENT STATUS (2026-08-29)
-- Standalone repo: pushed to origin/main ✅ — fully decoupled from (kit is its own standalone project, public-ready)
+- Standalone repo: pushed to origin/main ✅ — kit is its own standalone project, public-ready
 - Server `~/deploy-kit/`: manual copy still pending (user's job) + first live test.
