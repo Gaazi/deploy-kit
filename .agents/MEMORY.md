@@ -11,7 +11,7 @@
 - **Resource budget (GitHub):** hosted ~1 min/deploy · native webhook 0 · cron 0 · self-hosted 0 · docs push 0 (paths-ignore)
 - **Resource budget (server):** `--single-branch` clone · SHA-skip instant · log 1MB rotation · DB_BACKUP_KEEP · deploy lock · optional steps only when configured
 - **Required config:** only `REPO_URL` + `APP_DIR`. Everything else optional — empty = skip, never crash.
-- **Test:** `/bin/bash test.sh` — 36 checks, run before committing. CI runs it on every push to main.
+- **Test:** `/bin/bash test.sh` — 37 checks, run before committing. CI runs it on every push to main.
 - **Deploy flow:** git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health → Telegram
 
 ## File map (what each script does)
@@ -85,7 +85,7 @@
 - **All-stacks:** pm2/supervisor, SERVICE_NAME, APP_SUBDIR, sqlite, 9 app types
 - **Beginner:** YES/NO wizard, `keygen.sh`
 - **LITE workflow:** no checkout/build, 1 tiny SSH job
-- **test.sh:** self-test (36 checks)
+- **test.sh:** self-test (37 checks)
 - **RSYNC_EXCLUDES** config key; setup-quick parses all keys
 - **Robustness:** git-failure guard, rollback rebuild, postgres prune
 - **Dynamic config:** TOGGLE_FLAG, DEFAULT_BRANCH, LOG_FILE — 0 hardcoded paths
