@@ -9,13 +9,34 @@
 
 ```
 GitHub push (dev/demo/main)
-   → GitHub Actions trigger (~6s, fire-and-forget)
-   → On the server: auto_deploy.sh <branch>
+   → GitHub Actions trigger (~6s, fire-and-forget)      ← RUNNER: sirf trigger
+   → On the server: auto_deploy.sh <branch>             ← SERVER: sara kaam yahan
    → git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health check → [Telegram]
    → Site live
 ```
 
 **Fire-and-forget:** The GitHub run completes in ~6s. The deploy runs in the background on the server. You get the result via a **Telegram alert**.
+
+## 🖥️ Runner vs Server — who does what (minimum resource)
+
+> **Principle: sara kaam server pe hota hai. Runner sirf wo kaam karta hai jo runner ke
+> baghair nahi ho sakta — push ka notification (SSH trigger).**
+
+| Kaam | Kahin hota hai? |
+|------|-----------------|
+| Push detect karna | **Runner** (isliye hai — GitHub ko batana zaroori hai) |
+| SSH trigger (nohup) | **Runner** (~6s, phir khatam) |
+| git fetch / clone | **Server** |
+| Files sync (rsync) | **Server** |
+| Build (`BUILD_CMD`) | **Server** |
+| DB backup | **Server** |
+| **Migrate** (`MIGRATE_CMD`) | **Server** — sirf agar config mein ho |
+| **Restart** (`RESTART_METHOD`) | **Server** — sync ke baad |
+| Health check | **Server** |
+| Telegram alert | **Server** |
+
+Order (server pe, har deploy): **sync files → [backup] → [migrate] → [restart] → health**.
+Runner kuch aur nahi karta — na checkout, na build, na migrate. Sab kam resource server pe, runner bilkul halka.
 
 ---
 
