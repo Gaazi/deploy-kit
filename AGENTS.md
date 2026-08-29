@@ -46,7 +46,7 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 
 ---
 
-## File Structure (13 files + .agents/)
+## File Structure (15 files + .agents/)
 
 | File | Purpose |
 |------|---------|
@@ -57,9 +57,11 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 | `keygen.sh` | SSH key helper — one key pair both ways + 3 copy-paste blocks for GitHub |
 | `detect.sh` | **Fully dynamic** — reads your repo, auto-detects APP_TYPE/BUILD/MIGRATE/RESTART |
 | `cron.sh` | **Zero GitHub Actions** — install cron job, deploy every N min, 0 Actions minutes |
+| `runner.sh` | **~6s deploys (VPS)** — install a self-hosted GitHub runner: no VM boot, 0 Actions minutes |
 | `test.sh` | Self-test — bash -n + missing-config errors + full local file:// integration test (deploy → skip → rollback) |
 | `config.example.sh` | Settings template — copy to `config.sh` and fill |
-| `.github/workflows/deploy.yml.example` | GitHub Actions trigger (fire-and-forget ~6s, paths-ignore *.md) |
+| `.github/workflows/deploy.yml.example` | GitHub Actions trigger (hosted runner, ~1 min) |
+| `.github/workflows/deploy-selfhosted.yml.example` | GitHub Actions trigger (self-hosted runner, ~6s) |
 | `README.md` | User guide (3 setup methods, config table, checklist) |
 | `.gitignore` | Protects `config.sh` / secrets |
 | `LICENSE` | MIT |

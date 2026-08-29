@@ -19,7 +19,7 @@ GitHub push (dev/demo/main)
 
 ---
 
-## 📁 Files (13 + .agents/)
+## 📁 Files (15 + .agents/)
 
 | File | What it does |
 |------|---------------|
@@ -29,10 +29,12 @@ GitHub push (dev/demo/main)
 | `keygen.sh` | **SSH key helper** — creates the key + prints 3 ready-to-copy blocks for GitHub (~2 min) |
 | `detect.sh` | **Fully dynamic** — reads your repo and auto-sets APP_TYPE / build / migrate / restart by itself |
 | `cron.sh` | **Zero GitHub Actions** — one command installs a cron job: deploy every N min, 0 Actions minutes |
+| `runner.sh` | **~6s deploys (VPS)** — installs a self-hosted GitHub runner on the server: no VM boot, 0 Actions minutes |
 | `auto_deploy.sh` | Deploy script — git → rsync → build → backup → migrate → restart → health → telegram |
 | `rollback.sh` | Go back to the previous commit + DB restore |
 | `test.sh` | **Self-test** — syntax check + full local deploy/rollback test (no network) |
-| `.github/workflows/deploy.yml.example` | GitHub Actions trigger (fire-and-forget ~6s) |
+| `.github/workflows/deploy.yml.example` | GitHub Actions trigger (hosted runner, ~1 min) |
+| `.github/workflows/deploy-selfhosted.yml.example` | GitHub Actions trigger (self-hosted runner, ~6s) |
 | `README.md` | This guide |
 | `AGENTS.md` + `.agents/` | Agent rules + memory (for AI agents / future developers) |
 | `LICENSE` | MIT License — for a public repo |
@@ -175,6 +177,22 @@ Push (dev/demo/main) → GitHub Actions (~6s) → server deploy → Telegram ale
 
 ---
 
+## 🎯 Choose your deploy trigger (all included)
+
+| Trigger | Deploy speed | GitHub Actions minutes | Works on | Setup |
+|---------|-------------|------------------------|----------|-------|
+| **Hosted Actions** | ~1 min (VM boot + ~6s) | ~1 / deploy | cPanel + VPS | `deploy.yml.example` |
+| **Self-hosted runner** ⚡ | **~5-6s** (no VM boot) | **0** | VPS only | `runner.sh` + `deploy-selfhosted.yml.example` |
+| **Cron** | within N min | **0** | cPanel + VPS | `cron.sh` |
+
+- **Chhota project, kuch pushes** → Hosted Actions fine (simple).
+- **5-6 second chahte ho, VPS hai** → Self-hosted runner (`runner.sh`), zero VM boot.
+- **Limit ki koi fikr nahi chahiye** → Cron (`cron.sh`), unlimited.
+
+All of them call the **same `auto_deploy.sh`** — switch anytime, nothing else changes.
+
+---
+
 ## ⚡ GitHub free limits — never run out
 
 GitHub **free plan** gives you **2,000 Actions minutes / month**. Each deploy costs ~1 min
@@ -279,7 +297,7 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (13 files)
+- [ ] `~/deploy-kit/` on the server (15 files)
 - [ ] Created `config.sh` (wizard: `/bin/bash setup.sh`)
 - [ ] `chmod +x *.sh`
 - [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅

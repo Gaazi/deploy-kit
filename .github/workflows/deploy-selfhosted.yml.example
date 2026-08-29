@@ -1,0 +1,32 @@
+# GitHub Actions workflow — DEPLOY KIT (SELF-HOSTED RUNNER, ~6s)
+# ------------------------------------------------------------
+# Copy to your repo: .github/workflows/deploy-selfhosted.yml
+# Edit: branch names.
+# WHY: the runner runs ON the server (see runner.sh) → NO VM boot
+# → each deploy's GitHub run finishes in ~5-6s, 0 Actions minutes.
+# ⚠️ VPS only (needs systemd). Install first: /bin/bash runner.sh
+# ============================================================
+
+name: Deploy (self-hosted)
+
+on:
+  push:
+    branches: ["dev", "demo", "main"]   # ← edit: your branch names
+    paths-ignore: ["*.md", "**/*.md", "docs/**"]  # doc pushes = 0 runner time
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}          # minimal — no unnecessary GITHUB_TOKEN
+
+jobs:
+  deploy:
+    runs-on: self-hosted   # the runner on the server itself
+    timeout-minutes: 10
+    steps:
+      # No SSH needed — the runner lives on the same server as ~/deploy-kit
+      - name: Run deploy on the server
+        run: |
+          /bin/bash "$HOME/deploy-kit/auto_deploy.sh" "${{ github.ref_name }}"
