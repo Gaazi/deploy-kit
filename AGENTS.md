@@ -48,6 +48,32 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 
 ---
 
+## Resource Principle (kept in mind)
+
+- **Runner does ONLY the trigger** (~6s SSH). All deploy work (fetch, rsync, build, backup, migrate, restart, health, Telegram) runs on the server via `auto_deploy.sh`. Never add deploy logic to the workflow — it belongs in `auto_deploy.sh` (or `rollback.sh`).
+- **CI catches breaks**: the kit's own `.github/workflows/test.yml` runs `test.sh` on every push to `main` — a broken test = red CI.
+
+---
+
+## Common Change → What to Touch
+
+When you modify the kit, this table tells you which files to update. Anything not listed → at least run `test.sh`.
+
+| If you change... | Also update these |
+|---|---|
+| **A config key** | `config.example.sh` (default + comment) + `setup.sh` heredoc + `setup-quick.sh` heredoc + `README.md` config table + `.agents/reference_config.md` |
+| **A script** (auto_deploy/rollback/detect/cron/runner) | Run `test.sh` — it covers syntax + integration |
+| **setup.sh / setup-quick.sh** | `config.example.sh` (keys must match) + `README.md` (setup methods) |
+| **keygen.sh** | Verify `--single-branch` not broken; test.sh covers keygen |
+| **Workflow YAML** (`.github/workflows/*.yml`) | Update the corresponding `.example` file + `.agents/reference_deploy_flow.md` |
+| **README.md** | `AGENTS.md` file structure + `README.md` files table (keep file counts in sync) |
+| **Behavior / flow** | `.agents/reference_deploy_flow.md` + `.agents/MEMORY.md` (history) |
+| **test.sh** | `.github/workflows/test.yml` (CI job name mentions check count) + `.agents/MEMORY.md` (self-test section) |
+
+**After ANY change:** `bash -n` every script → `test.sh` → commit + push to `main`.
+
+---
+
 ## File Structure (15 files + .agents/)
 
 | File | Purpose |

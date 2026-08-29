@@ -109,6 +109,7 @@ nano config.sh
 | `REPO_URL` | GitHub repo (Settings → SSH clone) | Repo SSH URL | `git@github.com:user/repo.git` |
 | `APP_TYPE` | Your stack | python/node/php/wordpress/ruby/java/go/static/docker | `python` |
 | `PYTHON_BIN` | Python path on the server (virtualenv) | Python binary | `/home/cpuser/virtualenv/myapp/3.11/bin/python` |
+| `NODE_BIN` | Node binary path (if build uses a custom node) | Path or `""` | `/home/cpuser/bin/node` |
 | `BUILD_CMD` | Build command (Node/static) | Or leave empty `""` | `npm run build` |
 | `MIGRATE_CMD` | DB migration command | Or leave empty `""` | `$PYTHON_BIN -m alembic upgrade head` |
 | `RESTART_METHOD` | How the app restarts | passenger/touch/systemctl/pm2/supervisor/docker/php/none | `passenger` |
@@ -125,7 +126,9 @@ nano config.sh
 | `TELEGRAM_BOT_TOKEN` | From @BotFather (optional) | Token | `123:ABC...` |
 | `TELEGRAM_CHAT_ID` | Message from the bot on Telegram (optional) | Chat ID | `-100123...` |
 | `HEALTH_URL` | Health check URL (optional) | Full URL | `https://myapp.com/health` |
+| `HEALTH_WAIT` | Seconds to wait after restart before checking | Number | `8` |
 | `DEPLOY_KEY` | Path to the GitHub deploy key | Key file | `/home/cpuser/.ssh/deploy_key` |
+| `WORKSPACE_BASE` | Where the git workspace lives | Path | `/home/cpuser/deploy-workspace` |
 | `TOGGLE_FLAG` / `SKIP_WHEN_FLAG` | Toggle system (optional) | Flag path + `1` | — |
 | `DEFAULT_BRANCH` | Default deploy branch | Branch | `main` |
 | `LOG_FILE` | Where to log | Path | `/home/cpuser/deploy.log` |
@@ -179,6 +182,15 @@ It creates the SSH key, sets `DEPLOY_KEY` in `config.sh`, and prints **3 copy-pa
 3. **`SERVER_HOST` / `SERVER_USER` / `SSH_PORT`** → same Secrets page, 3 more secrets (values from your config)
 
 That's it — one key pair works both ways (server → GitHub clone + GitHub → server trigger). For each new repo, repeat only block 1.
+
+### Step 4b: Auto-detect your project (fully dynamic — optional but recommended)
+
+```bash
+# Reads your repo and fills APP_TYPE / build / migrate / restart by itself:
+/bin/bash detect.sh
+#   → says "Apply these to config.sh? (yes/no)" → yes
+#   → koi technical cheez yaad rakhne ki zaroorat nahi
+```
 
 ### Step 5: GitHub Actions setup
 
@@ -324,6 +336,7 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 - [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅
 - [ ] GitHub Deploy key added (keygen block 1)
 - [ ] GitHub Secrets (4) added (keygen blocks 2 + 3)
+- [ ] Auto-detect project: `/bin/bash detect.sh` (optional but easy)
 - [ ] `.github/workflows/deploy.yml` in your repo
 - [ ] Manual test: `/bin/bash auto_deploy.sh main` ✅
 - [ ] Push → Actions run ✅ → Telegram alert ✅
