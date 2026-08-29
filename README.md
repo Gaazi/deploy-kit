@@ -19,7 +19,7 @@ GitHub push (dev/demo/main)
 
 ---
 
-## 📁 Files (6)
+## 📁 Files (7 + .agents/)
 
 | File | What it does |
 |------|---------------|
@@ -30,6 +30,7 @@ GitHub push (dev/demo/main)
 | `rollback.sh` | Go back to the previous commit + DB restore |
 | `.github/workflows/deploy.yml.example` | GitHub Actions trigger (fire-and-forget ~6s) |
 | `README.md` | This guide |
+| `AGENTS.md` + `.agents/` | Agent rules + memory (for AI agents / future developers) |
 | `LICENSE` | MIT License — for a public repo |
 | `.gitignore` | So `config.sh` / secrets are never committed |
 
