@@ -50,7 +50,7 @@ mkdir -p ~/deploy-kit
 
 # Option B — download directly on the server (once the kit repo is public/forked):
 cd ~/deploy-kit
-for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh config.example.sh test.sh; do
+for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh detect.sh cron.sh test.sh config.example.sh; do
   curl -fsSL -o "$f" "https://raw.githubusercontent.com/YOUR_USER/deploy-kit/main/$f"
 done
 chmod +x *.sh
@@ -131,7 +131,7 @@ nano config.sh
 ### Step 3: Permissions + Test
 
 ```bash
-chmod +x auto_deploy.sh rollback.sh test.sh
+chmod +x auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh detect.sh cron.sh test.sh
 
 # Optional — verify the kit itself (syntax + full local deploy test, no network):
 /bin/bash test.sh
@@ -270,9 +270,9 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (8 files)
+- [ ] `~/deploy-kit/` on the server (13 files)
 - [ ] Created `config.sh` (wizard: `/bin/bash setup.sh`)
-- [ ] `chmod +x auto_deploy.sh rollback.sh test.sh keygen.sh`
+- [ ] `chmod +x *.sh`
 - [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅
 - [ ] GitHub Deploy key added (keygen block 1)
 - [ ] GitHub Secrets (4) added (keygen blocks 2 + 3)
