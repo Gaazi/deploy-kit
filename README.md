@@ -49,28 +49,45 @@ cd ~/deploy-kit
 
 ### Step 2: Config banao (sabse zaroori)
 
+**2 tareeke:**
+
 ```bash
+# Tareeka A — Easy (setup.sh — sawal jawab, khud banata hai):
+/bin/bash setup.sh
+
+# Tareeka B — Manual (config.example.sh copy + edit):
 cp config.example.sh config.sh
 nano config.sh
 ```
 
-`config.sh` mein ye bharo (sab zaroori):
+#### 📋 `config.sh` — KAHAN KYA DALNA HAI (poori detail)
 
-| Setting | Kya likhna hai | Example |
-|---------|---------------|---------|
-| `SERVER_USER` | Server login user | `cpuser` |
-| `SERVER_HOST` | Server IP / domain | `123.45.67.89` ya `server.com` |
-| `SSH_PORT` | SSH port | `22` |
-| `SITE_DOMAIN` | Live domain (health check ke liye) | `myapp.com` |
-| `APP_DIR` | Server par app ka folder | `/home/cpuser/myapp` |
-| `REPO_URL` | Aapka git repo (SSH) | `git@github.com:user/repo.git` |
-| `MIGRATE_CMD` | Migration command | Python: `$PYTHON_BIN -m alembic upgrade head` — Node/PHP: `""` |
-| `RESTART_METHOD` | App kaise restart | `passenger` / `touch` / `systemctl` / `none` |
-| `DB_BACKUP` | Migrate se pehle DB backup | `yes` / `no` |
-| `DB_*` | DB settings (agar backup yes) | host/user/pass/name |
-| `TELEGRAM_*` | Alerts (optional) | token + chat_id |
+| Setting | Kahan se lao | Kya likhna hai | Example |
+|---------|-------------|---------------|---------|
+| `SERVER_USER` | Server panel (cPanel username) | Login user | `cpuser` |
+| `SERVER_HOST` | Server IP ya domain | Host | `123.45.67.89` ya `server.com` |
+| `SSH_PORT` | SSH port (cPanel: 22) | Port | `22` |
+| `SITE_DOMAIN` | Aapka live domain | Domain (bina https://) | `myapp.com` |
+| `APP_DIR` | Server par app ka pura folder path | App directory | `/home/cpuser/myapp` |
+| `REPO_URL` | GitHub repo (Settings → SSH clone) | Repo SSH URL | `git@github.com:user/repo.git` |
+| `APP_TYPE` | Aapka stack | python/node/php/static/docker | `python` |
+| `PYTHON_BIN` | Server par Python path (virtualenv) | Python binary | `/home/cpuser/virtualenv/myapp/3.11/bin/python` |
+| `BUILD_CMD` | Build command (Node/static) | Ya khaali `""` | `npm run build` |
+| `MIGRATE_CMD` | DB migration command | Ya khaali `""` | `$PYTHON_BIN -m alembic upgrade head` |
+| `RESTART_METHOD` | App kaise restart | passenger/touch/systemctl/docker/php/none | `passenger` |
+| `WSGI_FILE` | Passenger wala (Python) | WSGI file | `passenger_wsgi.py` |
+| `DOCKER_COMPOSE` | Docker project | compose file path | `docker-compose.yml` |
+| `PHP_FPM_SERVICE` | PHP project | php-fpm service name | `php8.2-fpm` |
+| `DB_BACKUP` | DB backup chahiye? | yes/no | `yes` |
+| `DB_TYPE` / `DB_HOST` / `DB_USER` / `DB_PASS` / `DB_NAME` | Server DB panel | DB details | `mysql` / `localhost` / user / pass / name |
+| `TELEGRAM_BOT_TOKEN` | @BotFather se | Token | `123:ABC...` |
+| `TELEGRAM_CHAT_ID` | Telegram mein bot se message | Chat ID | `-100123...` |
+| `DEPLOY_KEY` | GitHub deploy key ka path | Key file | `/home/cpuser/.ssh/deploy_key` |
+| `TOGGLE_FLAG` / `SKIP_WHEN_FLAG` | Toggle system (optional) | Flag path + `1` | — |
+| `DEFAULT_BRANCH` | Default deploy branch | Branch | `main` |
+| `LOG_FILE` | Log kahan | Path | `/home/cpuser/deploy.log` |
 
-**Baqi settings optional:** `BUILD_CMD`, `NODE_BIN`, `WSGI_FILE`, `DEPLOY_KEY`.
+**Rule:** Jo cheez aapke project mein **nahi** hai → `""` (khaali) chhor do. Script automatically skip karega.
 
 ### Step 3: Permissions + Test
 
