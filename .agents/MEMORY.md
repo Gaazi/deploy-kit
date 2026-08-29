@@ -14,17 +14,24 @@
 - **Everything optional** — only `REPO_URL` + `APP_DIR` required (clear error if missing)
 - **Fire-and-forget**: GitHub Actions ~6s run, deploy runs on server via nohup; result via Telegram
 - **curl `-m 15`** timeout on health check + telegram — never hangs
-- **Restart methods**: passenger (touch tmp/restart.txt) | touch | systemctl | docker | php | none/"" (skip)
-- **DB backup**: `DB_BACKUP=yes` + DB_* set; keeps last 7 dumps; mysql + postgres supported
+- **Restart methods**: passenger (touch tmp/restart.txt) | touch | systemctl (SERVICE_NAME) | pm2 | supervisor | docker | php | none/"" (skip) — all non-fatal (`|| true`)
+- **DB backup**: `DB_BACKUP=yes` + DB_* set; keeps last 7; mysql (single-transaction) + postgres + sqlite (file copy)
 - **TOGGLE_FLAG/SKIP_WHEN_FLAG**: optional GitHub-vs-cron toggle (flag present + SKIP_WHEN_FLAG set → skip deploy)
 - **SHA-based skip**: `.deployed_sha` — no new commit = no deploy (idle runs are instant)
-- **Log rotation**: no — but LOG_FILE configurable (default `/home/$USER/deploy.log`)
+- **Deploy lock**: mkdir+pid at `$WORKSPACE_BASE/.deploy-lock` — concurrent runs skip, stale auto-cleaned; rollback shares it
+- **BUILD/MIGRATE failure → abort + Telegram fail alert** (hint rollback) — app dir never half-updated silently
+- **Log rotation**: 1 MB cap → `$LOG.1`
 - **Workspace clone** per branch: `WORKSPACE_BASE/<branch>` holds git history (rollback needs old SHAs)
+- **APP_SUBDIR** (monorepos): deploy only subfolder; missing → abort before touching app dir
+- **RSYNC_EXCLUDES**: extra excludes (space-separated) on top of defaults — used by auto_deploy + rollback
 
-## 3 setup methods (all kept)
-- `setup.sh` — interactive Q&A (16 questions, hints, Enter=default)
-- `setup-quick.sh` — paste `KEY=VALUE` lines, Ctrl+D → config.sh (validates APP_DIR+REPO_URL)
+## Setup methods (all kept)
+- `setup.sh` — beginner YES/NO wizard (Enter = recommended; restart method auto-set from APP_TYPE; auto-runs keygen.sh at end)
+- `setup-quick.sh` — paste `KEY=VALUE` lines, Ctrl+D → config.sh (validates APP_DIR+REPO_URL, parses ALL advanced keys)
 - manual — `cp config.example.sh config.sh && nano config.sh`
+
+## Self-test (run before committing)
+`/bin/bash test.sh` — bash -n + missing-config/required errors + full local file:// integration (deploy → skip → new commit → rollback) + keygen checks. Currently 22 checks.
 
 ## Sync strategy (STANDALONE — 2 places only)
 1. Standalone repo: `/run/media/ghazi/Data/coding/projects/deploy-kit` → `git@github.com:Gaazi/deploy-kit.git` (branch main, PRIVATE — public later)

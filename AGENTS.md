@@ -8,7 +8,7 @@
 
 ## What this project is
 
-A lightweight, config-driven auto-deployment kit for any project (Python / Node / PHP / static / Docker) on shared hosting (cPanel) or VPS.
+A lightweight, config-driven auto-deployment kit for any project (Python / Node / PHP / WordPress / Ruby / Java / Go / static / Docker) on shared hosting (cPanel) or VPS.
 
 **Flow:** GitHub push → GitHub Actions trigger (~6s, fire-and-forget SSH) → server runs `auto_deploy.sh <branch>` → git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → [health check] → [Telegram]. The `[ ]` steps are OPTIONAL — empty config = skipped.
 
@@ -46,27 +46,28 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 
 ---
 
-## File Structure (8 files + .agents/)
+## File Structure (10 files + .agents/)
 
 | File | Purpose |
 |------|---------|
 | `auto_deploy.sh` | Main deploy script — git → rsync → optional steps → health → telegram |
 | `rollback.sh` | Roll back to previous commit + optional DB restore |
-| `setup.sh` | Beginner YES/NO setup wizard (Enter = recommended, creates config.sh) |
+| `setup.sh` | Beginner YES/NO setup wizard (Enter = recommended, creates config.sh, auto-runs keygen.sh at end) |
 | `setup-quick.sh` | Paste setup (KEY=VALUE lines, Ctrl+D, no questions) |
 | `keygen.sh` | SSH key helper — one key pair both ways + 3 copy-paste blocks for GitHub |
+| `test.sh` | Self-test — bash -n + missing-config errors + full local file:// integration test (deploy → skip → rollback) |
 | `config.example.sh` | Settings template — copy to `config.sh` and fill |
-| `.github/workflows/deploy.yml.example` | GitHub Actions trigger (fire-and-forget ~6s) |
+| `.github/workflows/deploy.yml.example` | GitHub Actions trigger (fire-and-forget ~6s, paths-ignore *.md) |
 | `README.md` | User guide (3 setup methods, config table, checklist) |
 | `.gitignore` | Protects `config.sh` / secrets |
 | `LICENSE` | MIT |
 
 ---
 
-## 3 Setup Methods (keep all 3)
+## Setup Methods (keep all 3)
 
 ```bash
-/bin/bash setup.sh          # Method A — interactive Q&A
+/bin/bash setup.sh          # Method A — beginner YES/NO wizard (recommended)
 /bin/bash setup-quick.sh    # Method B — paste KEY=VALUE lines, then Ctrl+D
 cp config.example.sh config.sh && nano config.sh   # Method C — manual
 ```
