@@ -76,6 +76,13 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 - If `crontab` is unavailable (cPanel), `cron.sh` prints the exact line for **cPanel → Cron Jobs**.
 - Toggle: with Actions + cron both present, `touch ~/.deploy_github` + `SKIP_WHEN_FLAG=1` → cron skips (Actions handles it). Remove flag → cron deploys again.
 
+## Self-hosted runner (~6s deploys, VPS only)
+
+- `runner.sh` downloads/registers/installs a GitHub self-hosted runner on the server (needs systemd → VPS)
+- **No VM boot** → GitHub run finishes in ~5-6s; self-hosted minutes are free (0 Actions minutes)
+- Pair with `deploy-selfhosted.yml.example` (`runs-on: self-hosted`); runs `auto_deploy.sh` directly (no SSH)
+- ⚠️ Install as the SAME user that owns `~/deploy-kit/`; not for shared hosting
+
 ## SSH keys (keygen.sh)
 
 - ONE key pair, works both ways:
