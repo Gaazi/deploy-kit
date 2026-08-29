@@ -9,7 +9,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
-[ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE" || { echo "❌ config.sh nahi"; exit 1; }
+[ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE" || { echo "❌ config.sh not found"; exit 1; }
 
 BRANCH="${1:-main}"
 APP_DIR="${APP_DIR:-/home/$SERVER_USER/app}"
@@ -17,7 +17,7 @@ WORKSPACE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}/$BRANCH"
 TARGET_SHA="${2:-$(cat "$WORKSPACE/.deployed_sha" 2>/dev/null)}"
 
 if [ -z "$TARGET_SHA" ]; then
-  echo "❌ Target SHA nahi mila — commit sha do"
+  echo "❌ Target SHA not found — provide a commit SHA"
   exit 1
 fi
 

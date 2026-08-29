@@ -1,4 +1,4 @@
-# Deploy Kit — secrets kabhi commit mat karo
+# Deploy Kit — never commit secrets
 config.sh
 *.env
 deploy_key*
