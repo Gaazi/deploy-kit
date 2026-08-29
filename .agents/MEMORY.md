@@ -34,7 +34,7 @@
 `/bin/bash test.sh` — bash -n + missing-config/required errors + full local file:// integration (deploy → skip → new commit → rollback) + keygen checks. Currently 22 checks.
 
 ## Sync strategy (STANDALONE — 2 places only)
-1. Standalone repo: `/run/media/ghazi/Data/coding/projects/deploy-kit` → `git@github.com:Gaazi/deploy-kit.git` (branch main, PRIVATE — public later)
+1. This repo (branch `main`) — commit + push here
 2. User's server `~/deploy-kit/` (manual copy)
 Any change → commit + push to `main`. Nothing else to sync — this is a fully standalone kit.
 

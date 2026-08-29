@@ -46,7 +46,7 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 
 ---
 
-## File Structure (10 files + .agents/)
+## File Structure (12 files + .agents/)
 
 | File | Purpose |
 |------|---------|
@@ -55,6 +55,7 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 | `setup.sh` | Beginner YES/NO setup wizard (Enter = recommended, creates config.sh, auto-runs keygen.sh at end) |
 | `setup-quick.sh` | Paste setup (KEY=VALUE lines, Ctrl+D, no questions) |
 | `keygen.sh` | SSH key helper — one key pair both ways + 3 copy-paste blocks for GitHub |
+| `cron.sh` | **Zero GitHub Actions** — install cron job, deploy every N min, 0 Actions minutes |
 | `test.sh` | Self-test — bash -n + missing-config errors + full local file:// integration test (deploy → skip → rollback) |
 | `config.example.sh` | Settings template — copy to `config.sh` and fill |
 | `.github/workflows/deploy.yml.example` | GitHub Actions trigger (fire-and-forget ~6s, paths-ignore *.md) |
@@ -78,7 +79,7 @@ cp config.example.sh config.sh && nano config.sh   # Method C — manual
 
 The kit is a **100% standalone project** — no other project is tied to it.
 
-1. **Standalone repo** `Gaazi/deploy-kit` (local: `/run/media/ghazi/Data/coding/projects/deploy-kit`, remote: `git@github.com:Gaazi/deploy-kit.git`, branch `main`)
+1. **This repo** (branch `main`) — commit + push here
 2. **User's server** `~/deploy-kit/` (deployed files — user copies manually)
 
 **After any change:** commit + push to `main`. That's it — nothing else to sync.

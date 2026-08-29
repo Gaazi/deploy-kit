@@ -19,7 +19,7 @@ GitHub push (dev/demo/main)
 
 ---
 
-## 📁 Files (8 + .agents/)
+## 📁 Files (12 + .agents/)
 
 | File | What it does |
 |------|---------------|
@@ -27,6 +27,7 @@ GitHub push (dev/demo/main)
 | `setup.sh` | **Beginner setup wizard** — YES/NO questions, press Enter for recommended, creates config.sh itself |
 | `setup-quick.sh` | **Paste setup** — paste all your values at once, no questions |
 | `keygen.sh` | **SSH key helper** — creates the key + prints 3 ready-to-copy blocks for GitHub (~2 min) |
+| `cron.sh` | **Zero GitHub Actions** — one command installs a cron job: deploy every N min, 0 Actions minutes |
 | `auto_deploy.sh` | Deploy script — git → rsync → build → backup → migrate → restart → health → telegram |
 | `rollback.sh` | Go back to the previous commit + DB restore |
 | `test.sh` | **Self-test** — syntax check + full local deploy/rollback test (no network) |
@@ -95,6 +96,7 @@ nano config.sh
 | `PHP_FPM_SERVICE` | PHP project | php-fpm service name | `php8.2-fpm` |
 | `APP_SUBDIR` | Monorepo: deploy only this subfolder | `""` = whole repo | `web/` |
 | `DB_BACKUP` | Want a DB backup? | yes/no | `yes` |
+| `DB_BACKUP_KEEP` | How many old dumps to keep (lighter disk = smaller) | Number | `7` |
 | `DB_TYPE` / `DB_HOST` / `DB_USER` / `DB_PASS` / `DB_NAME` | Server DB panel (sqlite: `DB_NAME` = file path in app folder) | DB details | `mysql` / `localhost` / user / pass / name |
 | `TELEGRAM_BOT_TOKEN` | From @BotFather (optional) | Token | `123:ABC...` |
 | `TELEGRAM_CHAT_ID` | Message from the bot on Telegram (optional) | Chat ID | `-100123...` |
@@ -169,6 +171,31 @@ Edit your **branch names** in `deploy.yml` (default: dev/demo/main).
 ```
 Push (dev/demo/main) → GitHub Actions (~6s) → server deploy → Telegram alert
 ```
+
+---
+
+## ⚡ GitHub free limits — never run out
+
+GitHub **free plan** gives you **2,000 Actions minutes / month**. Each deploy costs ~1 min
+(VM boot + the ~6s job). So Actions mode handles roughly **2,000 deploys/month** — enough for
+most projects. Doc-only pushes cost **0** (the workflow ignores `*.md`).
+
+**Want to use ZERO Actions minutes?** Use the cron mode instead — the server checks the repo
+itself every few minutes and deploys when there's a new commit:
+
+```bash
+# On the server, inside ~/deploy-kit/:
+/bin/bash cron.sh 2            # deploy every 2 minutes, 0 GitHub Actions
+/bin/bash cron.sh 5            # ... or every 5 minutes
+```
+
+- No new commit → instant skip (SHA check) — idle checks cost nothing
+- Build / DB backup / migrate / restart / health / Telegram all work the same
+- Free plan = **unlimited cron** — the limit can never run out
+- Not on a VPS? cPanel users: `cron.sh` prints the exact line for **cPanel → Cron Jobs**
+
+> **Toggle:** running both? `touch ~/.deploy_github` + `SKIP_WHEN_FLAG=1` → cron skips
+> and GitHub Actions takes over. Remove the flag → cron deploys again.
 
 ---
 
