@@ -77,7 +77,8 @@ trap 'rm -rf "$LOCK_DIR" 2>/dev/null' EXIT
 # ── 1. Git workspace ────────────────────────────────────────
 if [ ! -d "$WORKSPACE/.git" ]; then
   GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i $DEPLOY_KEY -o StrictHostKeyChecking=no}" \
-    git clone --branch "$BRANCH" "$REPO_URL" "$WORKSPACE" >> "$LOG" 2>&1
+    # --single-branch: only this branch's history — minimum network + disk
+    git clone --single-branch --branch "$BRANCH" "$REPO_URL" "$WORKSPACE" >> "$LOG" 2>&1
 else
   GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i $DEPLOY_KEY -o StrictHostKeyChecking=no}" \
     git -C "$WORKSPACE" fetch origin "$BRANCH" >> "$LOG" 2>&1
