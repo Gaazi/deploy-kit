@@ -53,7 +53,8 @@ Any change → commit + push to `main`. Nothing else to sync — this is a fully
 - Beginner pass: setup.sh rewritten as YES/NO wizard (Enter = recommended; restart method auto-set from APP_TYPE; DB_PASS now asked; auto-runs keygen.sh at the end). NEW keygen.sh — ONE key pair both ways (server→GitHub deploy key + GitHub→server authorized_keys), sets DEPLOY_KEY in config.sh, prints 3 copy-paste blocks (Deploy key, SSH_PRIVATE_KEY, SERVER_HOST/USER/PORT secrets). test.sh now covers keygen too (15 checks).
 - All-stacks pass: restart methods +pm2/+supervisor (non-fatal `|| true`), SERVICE_NAME for systemctl (default SITE_DOMAIN), APP_SUBDIR for monorepos (abort if missing), sqlite DB backup/restore (file copy), wizard covers 9 app types (python/node/php/wordpress/ruby/java/go/static/docker) with per-type build/migrate hints; test.sh = 18 checks.
 - Better+lite pass: deploy lock (mkdir+pid, stale auto-clean, rollback shares it), BUILD/MIGRATE failure → abort + Telegram fail alert, log rotation at 1MB, workflow paths-ignore for *.md (0 runner time on doc pushes), README server-download one-liner; test.sh = 22 checks.
-- STANDALONE (2026-08-29): kit is 100% its own project — no external repo folder, no multi-branch sync. Sync = commit + push to main only.
+- STANDALONE (2026-08-29): kit is 100% its own project — no external repo folder, no multi-branch sync. Sync = commit + push to main only. ()
+- Zero-Actions pass: cron.sh (server cron deploy every N min = 0 GitHub Actions minutes; free-plan 2000min/mo never runs out; cPanel fallback prints the Cron Jobs line). DB_BACKUP_KEEP config key (default 7, smaller = lighter disk). README "GitHub free limits" section. test.sh covers cron.sh.
 
 ## Troubleshooting quick
 - `config.sh not found` → copy example first

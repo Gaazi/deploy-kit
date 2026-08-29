@@ -21,7 +21,7 @@ git push (any branch)
 2. **SHA skip** — compare `.deployed_sha`; same SHA → exit 0 (no work, prints "No new commit" on stdout too)
 3. **Rsync** — `-az --delete` with excludes: `.git/`, `.env`, `*.db`, `*.sqlite3`, `__pycache__/`, `*.pyc`, `node_modules/`, `venv/`, `.venv/`, `*.log`, `media/`, `backups/`, `tests/` + any extra `RSYNC_EXCLUDES` (space-separated). **`APP_SUBDIR` set → only that subfolder is deployed** (monorepos); missing subfolder → abort before touching app dir.
 4. **Build** — if `BUILD_CMD` set → run in APP_DIR. **Failure → Telegram fail alert + abort** (app may be partially updated → hint rollback).
-5. **DB backup** — if `DB_BACKUP=yes` + DB_* set → mysqldump/pg_dump to `$APP_DIR/backups/predeploy/`, keep 7 (both mysql + postgres); sqlite = file copy, keep 7
+5. **DB backup** — if `DB_BACKUP=yes` + DB_* set → mysqldump/pg_dump to `$APP_DIR/backups/predeploy/`, keep `DB_BACKUP_KEEP` (default 7); sqlite = file copy, keep 7
 6. **Migrate** — if `MIGRATE_CMD` set → run in APP_DIR. **Failure → Telegram fail alert + abort** (hint: restore DB dump then rollback).
 7. **Restart** — per `RESTART_METHOD` (passenger → touch tmp/restart.txt; systemctl → restart `$SERVICE_NAME` or `$SITE_DOMAIN`; pm2 → `pm2 restart $PM2_APP`; supervisor → `supervisorctl restart $SUPERVISOR_APP`; docker → compose down/up; php → reload fpm; none/"" → skip). All restart failures are non-fatal (`|| true`) — deploy never crashes because a service binary is missing.
 8. **Record SHA** — write `.deployed_sha` in workspace
@@ -67,6 +67,13 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 - Fire-and-forget: `nohup ... &` — run completes in ~6s, deploy continues on server
 - GitHub Secrets needed: `SERVER_HOST`, `SERVER_USER`, `SSH_PORT`, `SSH_PRIVATE_KEY`
 - **`keygen.sh` prints all 4 secret values + the Deploy key — pure copy-paste, no manual key work**
+
+## Zero GitHub Actions (cron.sh) — optional, free-plan friendly
+
+- Free GitHub = **2,000 Actions min/month**; each deploy ≈ 1 min (VM boot + ~6s job) → ~2,000 deploys/mo
+- **`cron.sh`** installs a server cron job (`*/N * * * * /bin/bash .../auto_deploy.sh <branch>`) — **0 Actions minutes**, deploy within N min. SHA check = idle runs are instant no-ops.
+- If `crontab` is unavailable (cPanel), `cron.sh` prints the exact line for **cPanel → Cron Jobs**.
+- Toggle: with Actions + cron both present, `touch ~/.deploy_github` + `SKIP_WHEN_FLAG=1` → cron skips (Actions handles it). Remove flag → cron deploys again.
 
 ## SSH keys (keygen.sh)
 
