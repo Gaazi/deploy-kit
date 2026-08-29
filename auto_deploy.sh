@@ -145,6 +145,8 @@ if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ]; then
   mkdir -p "$BK_DIR"
   TS="$(date +%Y%m%d_%H%M%S)"
   KEEP="${DB_BACKUP_KEEP:-7}"   # how many old dumps to keep (lighter disk = smaller number)
+  case "$KEEP" in ''|*[!0-9]*) KEEP=7;; esac   # safety: non-numeric → default 7
+  [ "$KEEP" -lt 1 ] && KEEP=1                  # safety: 0 would delete ALL backups
   if [ "$DB_TYPE" = "mysql" ] && [ -n "$DB_USER" ] && command -v mysqldump >/dev/null 2>&1; then
     MYSQL_PWD="$DB_PASS" mysqldump -h "$DB_HOST" -u "$DB_USER" --single-transaction "$DB_NAME" \
       > "$BK_DIR/${SITE_DOMAIN}_${TS}.sql" 2>>"$LOG" \
