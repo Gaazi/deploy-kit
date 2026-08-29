@@ -48,9 +48,13 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 
 ---
 
-## Resource Principle (kept in mind)
+## Resource Principle (kept in mind — MAIN GOAL)
 
-- **Runner does ONLY the trigger** (~6s SSH). All deploy work (fetch, rsync, build, backup, migrate, restart, health, Telegram) runs on the server via `auto_deploy.sh`. Never add deploy logic to the workflow — it belongs in `auto_deploy.sh` (or `rollback.sh`).
+**Main goal: server + GitHub resource = minimum, so free limits never run out.**
+
+- **Runner does ONLY the trigger** (~6s SSH, or 0 with webhook/cron). All deploy work (fetch, rsync, build, backup, migrate, restart, health, Telegram) runs on the server via `auto_deploy.sh`. Never add deploy logic to the workflow — it belongs in `auto_deploy.sh` (or `rollback.sh`).
+- **GitHub resource budget:** hosted Actions = ~1 min/deploy (VM boot + 6s job). Zero-cost options: native webhook (0 runner), cron (`cron.sh`), self-hosted runner (`runner.sh`). Doc-only pushes skip the workflow entirely (`paths-ignore`).
+- **Server resource budget:** `--single-branch` clone (min network/disk), SHA-skip (idle = instant), log rotation (1MB), `DB_BACKUP_KEEP` (configurable), deploy lock (no duplicate runs), optional steps only when configured.
 - **CI catches breaks**: the kit's own `.github/workflows/test.yml` runs `test.sh` on every push to `main` — a broken test = red CI.
 
 ---

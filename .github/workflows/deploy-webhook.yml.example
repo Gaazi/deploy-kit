@@ -6,6 +6,10 @@
 #   DEPLOY_WEBHOOK_URL    — http://SERVER_IP:9000/webhook/deploy/
 # WHY: webhook POST is faster than SSH handshake (~1-2s).
 # ⚠️ VPS only — server must run: /bin/bash webhook.sh start
+#
+# 💡 EVEN LIGHTER (0 runner): use GitHub's NATIVE webhook instead
+#    (repo → Settings → Webhooks) — no Actions runner at all.
+#    This workflow is only needed if you want the Actions UI/log.
 # ============================================================
 
 name: Deploy (webhook)
