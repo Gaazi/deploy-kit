@@ -58,6 +58,7 @@ Any change → commit + push to `main`. Nothing else to sync — this is a fully
 - Fully dynamic pass: detect.sh — clones the workspace, auto-detects app type + build/migrate/restart commands from repo files (package.json, manage.py, Dockerfile, etc.), applies to config.sh on confirmation. HEALTH_WAIT config key replaces hardcoded sleep 8. No hardcoded values left.
 - Runner-lite pass: deploy.yml paths-ignore expanded (docs/**), `permissions: {}` (no token), kit's own CI installs rsync only if missing; README free-limits section recommends cron.sh for zero-cost.
 - Trigger-choice pass: ALL trigger options kept (user picks) — hosted Actions (~1 min), self-hosted runner (~6s, NEW runner.sh + deploy-selfhosted.yml.example, VPS only), cron (0 Actions), cron. All call the same auto_deploy.sh. README "Choose your deploy trigger" table.
+- Resource principle (AGENTS.md + README + references): runner does ONLY the ~6s trigger; ALL deploy work (fetch, rsync, build, backup, migrate, restart, health, Telegram) runs on the server. Never add deploy work to the workflow. `--single-branch` clone = minimum network/disk.
 
 ## Troubleshooting quick
 - `config.sh not found` → copy example first

@@ -12,6 +12,8 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 
 **Flow:** GitHub push → GitHub Actions trigger (~6s, fire-and-forget SSH) → server runs `auto_deploy.sh <branch>` → git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → [health check] → [Telegram]. The `[ ]` steps are OPTIONAL — empty config = skipped.
 
+**Resource principle:** Runner does ONLY the trigger (~6s). All deploy work (fetch, rsync, build, backup, migrate, restart, health, Telegram) happens on the server. Nothing else runs on the runner — no checkout, no build, no migrate. Minimum resource, maximum efficiency.
+
 ---
 
 ## Where rules live
