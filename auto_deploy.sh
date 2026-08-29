@@ -2,7 +2,7 @@
 # ============================================================
 # DEPLOY KIT — auto_deploy.sh (GENERIC)
 # ------------------------------------------------------------
-# Kisi bhi project ke liye deploy — config.sh se sab settings.
+# Deploy for any project — all settings come from config.sh.
 #   usage: /bin/bash auto_deploy.sh <branch>
 #
 # Flow: git fetch → rsync → [build] → [db backup] → [migrate]
@@ -43,7 +43,7 @@ notify() {
   fi
 }
 
-# ── 0. GitHub-mode flag (optional toggle — config se) ───────
+# ── 0. GitHub-mode flag (optional toggle — from config) ──────
 TOGGLE_FLAG="${TOGGLE_FLAG:-/home/$SERVER_USER/.deploy_github}"
 if [ -f "$TOGGLE_FLAG" ] && [ -n "$SKIP_WHEN_FLAG" ]; then
   log "Skipped — flag present ($TOGGLE_FLAG)"
@@ -58,13 +58,28 @@ else
   GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i $DEPLOY_KEY -o StrictHostKeyChecking=no}" \
     git -C "$WORKSPACE" fetch origin "$BRANCH" >> "$LOG" 2>&1
 fi
+
+# Safety guard: abort if the branch is missing on the remote (clone/fetch failed).
+# Never rsync --delete from a broken workspace — it would wipe the app.
+if ! git -C "$WORKSPACE" rev-parse --verify -q "origin/$BRANCH" >/dev/null 2>&1; then
+  echo "❌ Branch '$BRANCH' not found on remote ($REPO_URL) — deploy aborted, app untouched" | tee -a "$LOG"
+  exit 1
+fi
+
 git -C "$WORKSPACE" checkout "$BRANCH" >> "$LOG" 2>&1
 git -C "$WORKSPACE" reset --hard "origin/$BRANCH" >> "$LOG" 2>&1
 NEW_SHA="$(git -C "$WORKSPACE" rev-parse HEAD)"
+
+# Safety guard: a real commit must be resolved before touching the app dir.
+if [ -z "$NEW_SHA" ]; then
+  echo "❌ Could not resolve git HEAD — deploy aborted, app untouched" | tee -a "$LOG"
+  exit 1
+fi
 OLD_SHA="$(cat "$WORKSPACE/.deployed_sha" 2>/dev/null || echo none)"
 
 if [ "$OLD_SHA" = "$NEW_SHA" ]; then
   log "No new commit on $BRANCH ($NEW_SHA) — skip"
+  echo "⏭️ No new commit on $BRANCH — skip (deployed: ${NEW_SHA:0:10})"
   exit 0
 fi
 
@@ -74,12 +89,12 @@ log "Deploying $BRANCH: $OLD_SHA -> $NEW_SHA"
 
 # ── 2. Rsync to app dir ─────────────────────────────────────
 mkdir -p "$APP_DIR"
-rsync -az --delete \
-  --exclude='/.git/' --exclude='.env' --exclude='*.db' --exclude='*.sqlite3' \
+RSYNC_ARGS=(--exclude='/.git/' --exclude='.env' --exclude='*.db' --exclude='*.sqlite3' \
   --exclude='__pycache__/' --exclude='*.pyc' --exclude='node_modules/' \
   --exclude='venv/' --exclude='.venv/' --exclude='*.log' --exclude='media/' \
-  --exclude='backups/' --exclude='tests/' \
-  "$WORKSPACE/" "$APP_DIR/" >> "$LOG" 2>&1
+  --exclude='backups/' --exclude='tests/')
+for ex in $RSYNC_EXCLUDES; do RSYNC_ARGS+=(--exclude="$ex"); done
+rsync -az --delete "${RSYNC_ARGS[@]}" "$WORKSPACE/" "$APP_DIR/" >> "$LOG" 2>&1
 
 # ── 3. Build (if configured) ────────────────────────────────
 if [ -n "$BUILD_CMD" ]; then
@@ -99,8 +114,9 @@ if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ] && [ -n "$DB_USER" ]; then
     log "DB backup: $BK_DIR/${SITE_DOMAIN}_${TS}.sql (last 7 kept)"
   elif [ "$DB_TYPE" = "postgres" ] && command -v pg_dump >/dev/null 2>&1; then
     PGPASSWORD="$DB_PASS" pg_dump -h "$DB_HOST" -U "$DB_USER" "$DB_NAME" \
-      > "$BK_DIR/${SITE_DOMAIN}_${TS}.sql" 2>>"$LOG"
-    log "DB backup: $BK_DIR/${SITE_DOMAIN}_${TS}.sql"
+      > "$BK_DIR/${SITE_DOMAIN}_${TS}.sql" 2>>"$LOG" \
+      && ls -1t "$BK_DIR"/*.sql 2>/dev/null | tail -n +8 | xargs -r rm -f 2>/dev/null
+    log "DB backup: $BK_DIR/${SITE_DOMAIN}_${TS}.sql (last 7 kept)"
   fi
 fi
 
@@ -130,10 +146,10 @@ esac
 # ── 7. Record SHA ───────────────────────────────────────────
 echo "$NEW_SHA" > "$WORKSPACE/.deployed_sha"
 
-# ── 8. Health check (optional — SITE_DOMAIN/HEALTH_URL khali = skip) ─
-sleep 8
+# ── 8. Health check (optional — empty SITE_DOMAIN/HEALTH_URL = skip) ─
 HEALTH_URL="${HEALTH_URL:-https://$SITE_DOMAIN/}"
 if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
+  sleep 8  # let the app boot before checking
   if curl -fsS -m 15 "$HEALTH_URL" >/dev/null 2>&1; then
     notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH) — health OK
 <code>${NEW_SHA:0:10}</code>"

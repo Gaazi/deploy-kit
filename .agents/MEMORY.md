@@ -40,9 +40,18 @@ Any change → ALL 3. Verify with `diff -q`.
 - README "WHERE TO PUT WHAT" full table + setup.sh per-question hints
 - Full English translation (all docs + script comments + prompts)
 - setup-quick.sh (paste method) added — 3 setup methods total
+- Robustness pass: git-failure guard (abort BEFORE rsync --delete if branch/HEAD unresolved — protects app dir), safety guard in rollback too, `sleep 8` only when health check configured, rollback now rebuilds (BUILD_CMD) + uses same excludes + DEFAULT_BRANCH + logs to LOG_FILE, postgres backups pruned (keep 7) like mysql
+- `RSYNC_EXCLUDES` config key added (extra excludes, space-separated) — used by auto_deploy + rollback; setup-quick.sh now parses ALL advanced keys (DEPLOY_KEY, TOGGLE_FLAG, DEFAULT_BRANCH, LOG_FILE, WSGI_FILE, DOCKER_COMPOSE, PHP_FPM_SERVICE, DB_TYPE/DB_HOST/DB_PASS, RSYNC_EXCLUDES...)
+- `test.sh` self-test added: bash -n + missing-config/required errors + full local file:// integration test (deploy → skip → new commit → rollback). Run before committing. NOTE: rsync quick-check = size+mtime — test keeps file sizes different between commits to stay deterministic.
 
 ## Troubleshooting quick
 - `config.sh not found` → copy example first
 - Health FAILED but deploy OK → site may need restart; run rollback.sh
 - No new commit → `.deployed_sha` match, skip (normal)
 - config.sh already exists → `rm config.sh` then re-run setup
+- Deploy aborted "Branch not found on remote" → wrong branch name or clone/fetch failed (git log for details)
+- Rsync didn't pick up a change → same file size + same mtime (two pushes within the same second) — standard rsync quick-check limitation, re-push or touch file
+
+## CURRENT STATUS (2026-08-29)
+- Standalone repo: pushed to origin/main ✅ (last commit: robustness + test.sh pass)
+- Server `~/deploy-kit/`: manual copy still pending (user's job) + first live test.

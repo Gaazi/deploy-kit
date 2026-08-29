@@ -58,8 +58,9 @@ Backup behavior: dumps to `$APP_DIR/backups/predeploy/`, keeps last 7, `--single
 | `WORKSPACE_BASE` | Clone workspace base | `/home/$USER/deploy-workspace` |
 | `TOGGLE_FLAG` | Flag path for toggle system | `/home/$USER/.deploy_github` |
 | `SKIP_WHEN_FLAG` | If set + flag exists → deploy skipped | `""` |
-| `DEFAULT_BRANCH` | Branch when none passed | `main` |
+| `DEFAULT_BRANCH` | Branch when none passed (auto_deploy + rollback) | `main` |
 | `LOG_FILE` | Log path | `/home/$USER/deploy.log` |
+| `RSYNC_EXCLUDES` | Extra rsync excludes, space-separated (added to defaults) | `""` |
 
 ## Golden rule
 **Golden rule: if your project doesn't have something → leave it `""` — the script skips it automatically. Only `REPO_URL` + `APP_DIR` are required.**

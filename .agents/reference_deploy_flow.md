@@ -16,15 +16,15 @@ git push (any branch)
 ## auto_deploy.sh steps (numbered)
 
 0. **Flag check** — if `TOGGLE_FLAG` file exists AND `SKIP_WHEN_FLAG` set → exit 0 (toggle mode)
-1. **Workspace** — clone if missing, else `git fetch origin <branch>`; `reset --hard origin/<branch>`
-2. **SHA skip** — compare `.deployed_sha`; same SHA → exit 0 (no work)
-3. **Rsync** — `-az --delete` with excludes: `.git/`, `.env`, `*.db`, `*.sqlite3`, `__pycache__/`, `*.pyc`, `node_modules/`, `venv/`, `.venv/`, `*.log`, `media/`, `backups/`, `tests/`
+1. **Workspace** — clone if missing, else `git fetch origin <branch>`. **Safety guard: if `origin/<branch>` can't be resolved (clone/fetch failed, wrong branch) → abort BEFORE rsync — the app dir is never touched.**
+2. **SHA skip** — compare `.deployed_sha`; same SHA → exit 0 (no work, prints "No new commit" on stdout too)
+3. **Rsync** — `-az --delete` with excludes: `.git/`, `.env`, `*.db`, `*.sqlite3`, `__pycache__/`, `*.pyc`, `node_modules/`, `venv/`, `.venv/`, `*.log`, `media/`, `backups/`, `tests/` + any extra `RSYNC_EXCLUDES` (space-separated)
 4. **Build** — if `BUILD_CMD` set → run in APP_DIR
-5. **DB backup** — if `DB_BACKUP=yes` + DB_* set → mysqldump/pg_dump to `$APP_DIR/backups/predeploy/`, keep 7
+5. **DB backup** — if `DB_BACKUP=yes` + DB_* set → mysqldump/pg_dump to `$APP_DIR/backups/predeploy/`, keep 7 (both mysql + postgres)
 6. **Migrate** — if `MIGRATE_CMD` set → run in APP_DIR
 7. **Restart** — per `RESTART_METHOD` (passenger → touch tmp/restart.txt; systemctl → restart $SITE_DOMAIN; docker → compose down/up; php → reload fpm; none/"" → skip)
 8. **Record SHA** — write `.deployed_sha` in workspace
-9. **Health check** — sleep 8 → `curl -m 15 HEALTH_URL` (or `https://$SITE_DOMAIN/`); OK → success alert, fail → warning alert
+9. **Health check** — only if HEALTH_URL resolves (empty → skip, **no 8s sleep**); `sleep 8` → `curl -m 15`; OK → success alert, fail → warning alert
 10. **Telegram** — start/success/fail alerts via `notify()` (only if token+chat set)
 
 ## Rollback (rollback.sh)
@@ -33,9 +33,22 @@ git push (any branch)
 /bin/bash rollback.sh <branch> [commit-sha]
 ```
 - No sha → uses last deployed SHA from `.deployed_sha`
-- Fetches, checks out target SHA, rsyncs to APP_DIR
+- Uses `DEFAULT_BRANCH` too (same default logic as auto_deploy.sh)
+- Fetches, **safety guard: target SHA must resolve locally → else abort before rsync**, checks out target SHA
+- Rsyncs to APP_DIR with the **same excludes** as auto_deploy.sh (+ RSYNC_EXCLUDES)
+- **Rebuilds** if `BUILD_CMD` set (Node/static rollbacks stay working)
 - Restores latest pre-migration dump if DB_* set and dump exists
-- Restarts per RESTART_METHOD
+- Restarts per RESTART_METHOD (same methods as auto_deploy.sh)
+- Writes rollback line to the same LOG_FILE
+
+## Self-test (test.sh)
+
+```
+/bin/bash test.sh
+```
+- bash -n on every script; missing-config error; missing-required-vars error
+- Full local integration test: real file:// git repo → deploy → idempotent skip → new commit → rollback
+- No network needed; everything in a temp dir. Run before committing changes.
 
 ## Toggle (GitHub vs Cron) — optional
 

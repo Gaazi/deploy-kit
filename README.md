@@ -28,6 +28,7 @@ GitHub push (dev/demo/main)
 | `setup-quick.sh` | **Paste setup** — paste all your values at once, no questions |
 | `auto_deploy.sh` | Deploy script — git → rsync → build → backup → migrate → restart → health → telegram |
 | `rollback.sh` | Go back to the previous commit + DB restore |
+| `test.sh` | **Self-test** — syntax check + full local deploy/rollback test (no network) |
 | `.github/workflows/deploy.yml.example` | GitHub Actions trigger (fire-and-forget ~6s) |
 | `README.md` | This guide |
 | `AGENTS.md` + `.agents/` | Agent rules + memory (for AI agents / future developers) |
@@ -93,6 +94,7 @@ nano config.sh
 | `TOGGLE_FLAG` / `SKIP_WHEN_FLAG` | Toggle system (optional) | Flag path + `1` | — |
 | `DEFAULT_BRANCH` | Default deploy branch | Branch | `main` |
 | `LOG_FILE` | Where to log | Path | `/home/cpuser/deploy.log` |
+| `RSYNC_EXCLUDES` | Extra rsync excludes (space-separated) | `uploads/` | — |
 
 **Rule:** Anything that is **not** in your project → leave it as `""` (empty). The script will skip it automatically.
 **Only 2 are required:** `REPO_URL` + `APP_DIR`. Everything else is **optional** — backup, build, migrate, restart, health check, Telegram, toggle — whatever is empty gets skipped.
@@ -100,7 +102,10 @@ nano config.sh
 ### Step 3: Permissions + Test
 
 ```bash
-chmod +x auto_deploy.sh rollback.sh
+chmod +x auto_deploy.sh rollback.sh test.sh
+
+# Optional — verify the kit itself (syntax + full local deploy test, no network):
+/bin/bash test.sh
 
 # Manual test (first time — confirm everything works):
 /bin/bash auto_deploy.sh main
