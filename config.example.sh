@@ -43,3 +43,9 @@ TELEGRAM_CHAT_ID=""
 # ── Git ─────────────────────────────────────────────────────
 DEPLOY_KEY=""                         # path to SSH deploy key ("" = use default ssh)
 WORKSPACE_BASE="/home/$SERVER_USER/deploy-workspace"  # clone workspace
+
+# ── Advanced (optional — dynamic defaults) ───────────────────
+TOGGLE_FLAG=""                        # "" = default /home/$SERVER_USER/.deploy_github
+SKIP_WHEN_FLAG=""                     # "1" = flag ho to deploy skip (toggle mode)
+DEFAULT_BRANCH="main"                 # branch jab koi na diya jaye
+LOG_FILE=""                           # "" = default /home/$SERVER_USER/deploy.log

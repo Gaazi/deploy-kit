@@ -20,10 +20,10 @@ if [ ! -f "$CONFIG_FILE" ]; then
 fi
 source "$CONFIG_FILE"
 
-BRANCH="${1:-main}"
+BRANCH="${1:-${DEFAULT_BRANCH:-main}}"
 APP_DIR="${APP_DIR:-/home/$SERVER_USER/app}"
 WORKSPACE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}/$BRANCH"
-LOG="${LOG:-/home/$SERVER_USER/deploy.log}"
+LOG="${LOG_FILE:-/home/$SERVER_USER/deploy.log}"
 NOW="$(date '+%F %T')"
 
 log() { echo "$NOW: $1" >> "$LOG"; }
@@ -36,8 +36,8 @@ notify() {
   fi
 }
 
-# ── 0. GitHub-mode flag (optional toggle) ───────────────────
-TOGGLE_FLAG="/home/$SERVER_USER/.deploy_github"
+# ── 0. GitHub-mode flag (optional toggle — config se) ───────
+TOGGLE_FLAG="${TOGGLE_FLAG:-/home/$SERVER_USER/.deploy_github}"
 if [ -f "$TOGGLE_FLAG" ] && [ -n "$SKIP_WHEN_FLAG" ]; then
   log "Skipped — flag present ($TOGGLE_FLAG)"
   exit 0
