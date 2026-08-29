@@ -42,7 +42,14 @@ RSYNC_ARGS=(--exclude='/.git/' --exclude='.env' --exclude='*.db' --exclude='*.sq
   --exclude='venv/' --exclude='.venv/' --exclude='*.log' --exclude='media/' \
   --exclude='backups/' --exclude='tests/')
 for ex in $RSYNC_EXCLUDES; do RSYNC_ARGS+=(--exclude="$ex"); done
-rsync -az --delete "${RSYNC_ARGS[@]}" "$WORKSPACE/" "$APP_DIR/" >> "$LOG" 2>&1
+# APP_SUBDIR (optional): deploy only one subfolder (monorepos)
+SRC_DIR="$WORKSPACE"
+[ -n "$APP_SUBDIR" ] && SRC_DIR="$WORKSPACE/$APP_SUBDIR"
+if [ ! -d "$SRC_DIR" ]; then
+  echo "❌ APP_SUBDIR not found: $SRC_DIR — rollback aborted, app untouched" | tee -a "$LOG"
+  exit 1
+fi
+rsync -az --delete "${RSYNC_ARGS[@]}" "$SRC_DIR/" "$APP_DIR/" >> "$LOG" 2>&1
 
 # rebuild (only if the app has a build step)
 if [ -n "$BUILD_CMD" ]; then
@@ -51,30 +58,34 @@ if [ -n "$BUILD_CMD" ]; then
 fi
 
 # restore pre-migration DB dump if present
-LATEST_DUMP="$(ls -1t "$APP_DIR/backups/predeploy/"*.sql 2>/dev/null | head -1)"
+LATEST_DUMP="$(ls -1t "$APP_DIR/backups/predeploy/"*.sql "$APP_DIR/backups/predeploy/"*.db 2>/dev/null | head -1)"
 if [ -n "$LATEST_DUMP" ] && [ -n "$DB_NAME" ] && [ -n "$DB_USER" ]; then
   echo "🔄 Restoring DB: $LATEST_DUMP"
   if [ "$DB_TYPE" = "mysql" ]; then
     MYSQL_PWD="$DB_PASS" mysql -h "$DB_HOST" -u "$DB_USER" "$DB_NAME" < "$LATEST_DUMP"
   elif [ "$DB_TYPE" = "postgres" ]; then
     PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -U "$DB_USER" "$DB_NAME" < "$LATEST_DUMP"
+  elif [ "$DB_TYPE" = "sqlite" ]; then
+    cp "$LATEST_DUMP" "$APP_DIR/$DB_NAME"
   fi
 fi
 
 # restart (optional)
 case "$RESTART_METHOD" in
-  passenger) mkdir -p "$APP_DIR/tmp" && touch "$APP_DIR/tmp/restart.txt" ;;
-  touch)     touch "$APP_DIR/restart.txt" ;;
-  systemctl) systemctl restart "$SITE_DOMAIN" 2>>"$LOG" || true ;;
-  docker)    if [ -n "$DOCKER_COMPOSE" ]; then
-               (cd "$APP_DIR" && docker compose -f "$DOCKER_COMPOSE" up -d --build) >> "$LOG" 2>&1
-             else
-               (cd "$APP_DIR" && docker compose up -d --build) >> "$LOG" 2>&1
-             fi ;;
-  php)       if [ -n "$PHP_FPM_SERVICE" ]; then
-               systemctl reload "$PHP_FPM_SERVICE" 2>>"$LOG" || service "$PHP_FPM_SERVICE" reload 2>>"$LOG" || true
-             fi ;;
-  ""|none)   : ;;
+  passenger)  mkdir -p "$APP_DIR/tmp" && touch "$APP_DIR/tmp/restart.txt" ;;
+  touch)      touch "$APP_DIR/restart.txt" ;;
+  systemctl)  systemctl restart "${SERVICE_NAME:-$SITE_DOMAIN}" 2>>"$LOG" || true ;;
+  pm2)        pm2 restart "${PM2_APP:-all}" >> "$LOG" 2>&1 || true ;;
+  supervisor) supervisorctl restart "${SUPERVISOR_APP:-all}" >> "$LOG" 2>&1 || true ;;
+  docker)     if [ -n "$DOCKER_COMPOSE" ]; then
+                (cd "$APP_DIR" && docker compose -f "$DOCKER_COMPOSE" up -d --build) >> "$LOG" 2>&1
+              else
+                (cd "$APP_DIR" && docker compose up -d --build) >> "$LOG" 2>&1
+              fi ;;
+  php)        if [ -n "$PHP_FPM_SERVICE" ]; then
+                systemctl reload "$PHP_FPM_SERVICE" 2>>"$LOG" || service "$PHP_FPM_SERVICE" reload 2>>"$LOG" || true
+              fi ;;
+  ""|none)    : ;;
 esac
 
 echo "✅ Rolled back to $TARGET_SHA + restarted"

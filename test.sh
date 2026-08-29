@@ -134,6 +134,58 @@ else
   bad "keygen: authorized_keys updated"
 fi
 
+echo "== 6. APP_SUBDIR (monorepo subfolder deploy) =="
+mkdir -p "$SRC/web"
+echo "subpage" > "$SRC/web/page.html"
+git -C "$SRC" add -A
+git -C "$SRC" -c user.email=test@test -c user.name=test commit -qm c3
+git -C "$SRC" push -q origin main
+sleep 1
+cat > "$TMP/kit/config.sh" <<CFG
+REPO_URL="file://$BARE"
+APP_DIR="$APP"
+WORKSPACE_BASE="$WS"
+LOG_FILE="$TMP/deploy.log"
+TOGGLE_FLAG="$TMP/flag"
+APP_SUBDIR="web"
+CFG
+(cd "$TMP/kit" && bash auto_deploy.sh main >/dev/null 2>&1)
+if [ -f "$APP/page.html" ] && grep -q subpage "$APP/page.html"; then
+  ok "APP_SUBDIR: subfolder deployed"
+else
+  bad "APP_SUBDIR: subfolder deployed"
+fi
+if [ ! -f "$APP/index.html" ]; then
+  ok "APP_SUBDIR: root files not copied"
+else
+  bad "APP_SUBDIR: root files not copied"
+fi
+
+echo "== 7. restart-method robustness (pm2/supervisor missing → no crash) =="
+echo "pm2-test" > "$SRC/web/page.html"
+git -C "$SRC" add -A
+git -C "$SRC" -c user.email=test@test -c user.name=test commit -qm c4
+git -C "$SRC" push -q origin main
+sleep 1
+cat > "$TMP/kit/config.sh" <<CFG
+REPO_URL="file://$BARE"
+APP_DIR="$APP"
+WORKSPACE_BASE="$WS"
+LOG_FILE="$TMP/deploy.log"
+TOGGLE_FLAG="$TMP/flag"
+APP_SUBDIR="web"
+RESTART_METHOD="pm2"
+PM2_APP="all"
+CFG
+(cd "$TMP/kit" && bash auto_deploy.sh main >/dev/null 2>&1)
+RC=$?
+if [ "$RC" -eq 0 ] && grep -q "Restart done (pm2)" "$TMP/deploy.log"; then
+  ok "deploy completed with pm2 (missing binary → no crash)"
+else
+  bad "deploy completed with pm2 (missing binary → no crash)"
+  tail -3 "$TMP/deploy.log" | sed 's/^/     /'
+fi
+
 echo ""
 echo "============================================="
 echo "  PASS: $PASS   FAIL: $FAIL"

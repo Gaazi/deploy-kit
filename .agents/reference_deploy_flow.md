@@ -18,11 +18,11 @@ git push (any branch)
 0. **Flag check** — if `TOGGLE_FLAG` file exists AND `SKIP_WHEN_FLAG` set → exit 0 (toggle mode)
 1. **Workspace** — clone if missing, else `git fetch origin <branch>`. **Safety guard: if `origin/<branch>` can't be resolved (clone/fetch failed, wrong branch) → abort BEFORE rsync — the app dir is never touched.**
 2. **SHA skip** — compare `.deployed_sha`; same SHA → exit 0 (no work, prints "No new commit" on stdout too)
-3. **Rsync** — `-az --delete` with excludes: `.git/`, `.env`, `*.db`, `*.sqlite3`, `__pycache__/`, `*.pyc`, `node_modules/`, `venv/`, `.venv/`, `*.log`, `media/`, `backups/`, `tests/` + any extra `RSYNC_EXCLUDES` (space-separated)
+3. **Rsync** — `-az --delete` with excludes: `.git/`, `.env`, `*.db`, `*.sqlite3`, `__pycache__/`, `*.pyc`, `node_modules/`, `venv/`, `.venv/`, `*.log`, `media/`, `backups/`, `tests/` + any extra `RSYNC_EXCLUDES` (space-separated). **`APP_SUBDIR` set → only that subfolder is deployed** (monorepos); missing subfolder → abort before touching app dir.
 4. **Build** — if `BUILD_CMD` set → run in APP_DIR
 5. **DB backup** — if `DB_BACKUP=yes` + DB_* set → mysqldump/pg_dump to `$APP_DIR/backups/predeploy/`, keep 7 (both mysql + postgres)
 6. **Migrate** — if `MIGRATE_CMD` set → run in APP_DIR
-7. **Restart** — per `RESTART_METHOD` (passenger → touch tmp/restart.txt; systemctl → restart $SITE_DOMAIN; docker → compose down/up; php → reload fpm; none/"" → skip)
+7. **Restart** — per `RESTART_METHOD` (passenger → touch tmp/restart.txt; systemctl → restart `$SERVICE_NAME` or `$SITE_DOMAIN`; pm2 → `pm2 restart $PM2_APP`; supervisor → `supervisorctl restart $SUPERVISOR_APP`; docker → compose down/up; php → reload fpm; none/"" → skip). All restart failures are non-fatal (`|| true`) — deploy never crashes because a service binary is missing.
 8. **Record SHA** — write `.deployed_sha` in workspace
 9. **Health check** — only if HEALTH_URL resolves (empty → skip, **no 8s sleep**); `sleep 8` → `curl -m 15`; OK → success alert, fail → warning alert
 10. **Telegram** — start/success/fail alerts via `notify()` (only if token+chat set)
