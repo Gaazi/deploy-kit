@@ -101,7 +101,7 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 
 - `webhook.sh` — socat HTTP listener (start/stop/status). GitHub POSTs to `http://SERVER:PORT/webhook/deploy/` → handler verifies → `auto_deploy.sh <branch>` in background. ~1-2s from push to deploy start, 0 Actions minutes.
 - Depends on `socat` + `openssl` (apt install socat). Pair with `deploy-webhook.yml.example`.
-- **Two auth modes (both supported):**
+- **2 auth modes (both supported):**
   - **Native GitHub webhook** (0 runner): repo → Settings → Webhooks → payload URL + secret. Handler verifies `X-Hub-Signature-256` (HMAC-SHA256) and reads branch from `"ref":"refs/heads/<branch>"`.
   - **Custom header** (from `deploy-webhook.yml.example`): `X-Deploy-Secret` matches `DEPLOY_WEBHOOK_SECRET`; branch from `{"branch":"..."}`.
 - GitHub secrets needed (Actions path): `DEPLOY_WEBHOOK_SECRET` (same value as server's config.sh), `DEPLOY_WEBHOOK_URL` (the public URL).

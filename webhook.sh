@@ -8,7 +8,7 @@
 # <branch> in the background. Fastest trigger (~1-2s), 0 GitHub
 # Actions minutes (no runner at all with native webhook).
 #
-# TWO ways to trigger:
+# 2 ways to trigger:
 #   1. Native GitHub webhook (recommended, 0 runner): repo →
 #      Settings → Webhooks → payload URL http://SERVER:PORT/
 #      webhook/deploy/ + secret (HMAC verified).

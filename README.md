@@ -415,7 +415,7 @@ So Actions mode handles roughly **2,000 deploys/month** — enough for most proj
 > **Toggle:** running both? `touch ~/.deploy_github` + `SKIP_WHEN_FLAG=1` → cron skips
 > and GitHub Actions takes over. Remove the flag → cron deploys again.
 
-> **Rule of thumb:** small project / few pushes → Actions mode is fine.
+> **Simple rule:** small project / few pushes → Actions mode is fine.
 > Many pushes / worry about the limit → `cron.sh` = unlimited, zero cost.
 
 ---

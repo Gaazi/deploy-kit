@@ -84,7 +84,7 @@ OUT="$(cd "$TMP/kit" && bash auto_deploy.sh main 2>&1)"
 echo "$OUT" | grep -qi "no new commit" && ok "idempotent skip (same SHA)" || bad "idempotent skip (same SHA)"
 
 # sleep 1 so the new file has a different mtime — rsync's quick check
-# compares size+mtime; two commits in the same second with same-size
+# compares size+mtime; 2 commits in the same second with same-size
 # files would otherwise be considered identical (standard rsync behavior)
 sleep 1
 echo "version-two-content" > "$SRC/index.html"
