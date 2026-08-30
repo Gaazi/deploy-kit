@@ -109,3 +109,4 @@
 - Standalone repo pushed to origin/main ✅ — public-ready, zero related-project references anywhere (files, git history, refs)
 - Server `~/deploy-kit/`: manual copy still pending (user's job) + first live test
 - BUGFIX (auto-rollback loop): after AUTO_ROLLBACK_ON_FAIL, `.deployed_sha` is set back to the broken NEW_SHA (not PREV_SHA) so cron/Actions don't re-deploy the broken commit on every trigger (was an infinite loop). rollback.sh skips its own notify when called via ROLLBACK_AUTO=1 (no double alert).
+- Quickstart pass: quickstart.sh (1 command: setup+keygen+detect+test), README top Quickstart section + Worked Example (generic), reference_deploy_flow now documents quickstart + doctor.sh. Goal: minimum reading for setup.
