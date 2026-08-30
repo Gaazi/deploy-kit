@@ -5,6 +5,21 @@
 
 ---
 
+## ✨ At a Glance
+
+| | |
+|---|---|
+| **Stacks** | Python · Node · PHP · WordPress · Ruby · Java · Go · Docker · Static |
+| **Hosting** | cPanel (shared) · VPS · Docker |
+| **Triggers** | GitHub Actions (hosted/self-hosted) · Webhook · Cron |
+| **Resource** | runner = ~6s trigger only · 0-min options (webhook/cron) |
+| **Setup** | `quickstart.sh` — 1 command, kuch padhna nahi |
+| **License** | MIT — free, public-ready |
+
+**Key ideas:** config-driven (1 `config.sh`, sab optional) · server does all the work · free GitHub limits never run out.
+
+---
+
 ## ⚡ Quickstart (1 command — kuch padhne ki zaroorat nahi)
 
 ```bash
