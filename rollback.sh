@@ -156,7 +156,10 @@ esac
 
 echo "$TARGET_SHA" > "$WORKSPACE/.deployed_sha" 2>/dev/null || true
 
-notify "⏪ <b>Rollback completed</b> ($SITE_DOMAIN · $BRANCH)
+# when called from auto-rollback, auto_deploy.sh sends its own alert — skip duplicate
+if [ "${ROLLBACK_AUTO:-0}" != "1" ]; then
+  notify "⏪ <b>Rollback completed</b> ($SITE_DOMAIN · $BRANCH)
 Rolled back to <code>${TARGET_SHA:0:10}</code> + restarted" "Rollback Successful: $SITE_DOMAIN ($BRANCH)"
+fi
 
 echo "✅ Rolled back to $TARGET_SHA + restarted"
