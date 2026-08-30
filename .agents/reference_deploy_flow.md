@@ -57,6 +57,24 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 - Full local integration test: real file:// git repo → deploy → idempotent skip → new commit → rollback
 - No network needed; everything in a temp dir. Run before committing changes.
 
+## Quickstart (quickstart.sh) — 1 command sab kuch
+
+```
+/bin/bash quickstart.sh
+```
+- Chained runner: `setup.sh` (config) → `keygen.sh` (SSH keys) → `detect.sh` (auto-detect) → `test.sh` (self-test)
+- User presses Enter for recommended values; ends with "copy workflow + push" instructions
+- The minimum-reading path — full detail only in README for those who need it
+
+## Preflight doctor (doctor.sh)
+
+```
+/bin/bash doctor.sh [config.sh]
+```
+- Checks shell/tools (git rsync curl ssh tar sed awk), config presence + permissions + required keys
+- Checks workspace/app dirs writable, SSH key, webhook deps
+- Exit 1 if config missing; summary of PASS/WARN/FAIL at the end
+
 ## Toggle (GitHub vs Cron) — optional
 
 - `TOGGLE_FLAG=""` → no toggle, always deploys
