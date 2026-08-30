@@ -271,7 +271,11 @@ if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
       PREV_SHA="$(cat "$WORKSPACE/.previous_sha" 2>/dev/null || echo '')"
       if [ -n "$PREV_SHA" ]; then
         log "Health FAILED — initiating auto-rollback to $PREV_SHA"
-        DEPLOY_LOCK_HELD=1 /bin/bash "${SCRIPT_DIR}/rollback.sh" "$BRANCH" "$PREV_SHA" >> "$LOG" 2>&1 || true
+        ROLLBACK_AUTO=1 DEPLOY_LOCK_HELD=1 /bin/bash "${SCRIPT_DIR}/rollback.sh" "$BRANCH" "$PREV_SHA" >> "$LOG" 2>&1 || true
+        # stop re-deploy loop: mark NEW_SHA (=broken) as "seen" so the next
+        # cron/Actions trigger sees OLD_SHA==NEW_SHA and skips (files are
+        # already rolled back to PREV_SHA by rollback.sh)
+        echo "$NEW_SHA" > "$WORKSPACE/.deployed_sha" 2>/dev/null || true
         notify "⚠️ <b>Health FAILED — Auto-rollback executed</b> ($SITE_DOMAIN · $BRANCH)
 Rolled back from <code>${NEW_SHA:0:10}</code> to <code>${PREV_SHA:0:10}</code>
 Check server log: $LOG" "Deploy Health FAILED (Auto-Rolled Back): $SITE_DOMAIN ($BRANCH)"
