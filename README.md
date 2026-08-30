@@ -255,6 +255,77 @@ Push (dev/demo/main) → GitHub Actions (~6s) → server deploy → Telegram ale
 
 ---
 
+## 🎬 Worked Example (generic — aapke project ke hisaab se fill karo)
+
+Maan lo aap ek **Node app** deploy kar rahe ho. Yeh hai poori flow, top se bottom:
+
+### 1. `quickstart.sh` chalao (server pe)
+
+```bash
+cd ~/deploy-kit
+/bin/bash quickstart.sh
+```
+
+Aap sirf yeh answer karte ho (Enter = recommended):
+
+```
+Server login username [cpuser]: cpuser
+Server host or IP [your-server.com]: myhost.com
+Live domain [myapp.com]: myapp.com
+App folder [/home/cpuser/myapp]: /home/cpuser/myapp
+GitHub repo SSH URL [git@github.com:user/repo.git]: git@github.com:you/myapp.git
+App type [python]: node          ← detect.sh baad mein khud bhi confirm karega
+... (baaki sab Enter dabate jao)
+```
+
+### 2. `config.sh` aise banta hai (example — koi real data nahi)
+
+```bash
+SERVER_USER="cpuser"
+SERVER_HOST="myhost.com"
+SITE_DOMAIN="myapp.com"
+APP_DIR="/home/cpuser/myapp"
+REPO_URL="git@github.com:you/myapp.git"
+
+APP_TYPE="node"
+BUILD_CMD="npm install && npm run build"   # detect.sh ne suggest kiya
+RESTART_METHOD="passenger"                 # cPanel ke liye
+
+DB_BACKUP="no"         # nahi chahiye to skip
+HEALTH_URL="https://myapp.com/"            # optional
+TELEGRAM_BOT_TOKEN=""  # na ho to alerts nahi
+```
+
+> **Rule:** jo cheez project mein nahi → usse `""` chhoro. Script skip kar deti hai. Sirf `REPO_URL` + `APP_DIR` zaroori.
+
+### 3. GitHub mein workflow + push
+
+```bash
+# aapke PROJECT repo mein (myapp):
+mkdir -p .github/workflows
+cp ~/deploy-kit/.github/workflows/deploy.yml.example .github/workflows/deploy.yml
+# branch names edit karo (dev/demo/main) + 4 Secrets set karo (keygen se)
+git add . && git commit -m "deploy setup" && git push
+```
+
+### 4. Kya hota hai (deploy log)
+
+```
+🚀 Deploy started (myapp.com · main)
+abc1234 → def5678
+✅ Deploy successful (myapp.com · main) — health OK
+   Time: 34s
+```
+
+### 5. Rollback (agar kuch toot jaye)
+
+```bash
+/bin/bash ~/deploy-kit/rollback.sh main        # last version pe wapas
+/bin/bash ~/deploy-kit/rollback.sh main <SHA>  # specific commit pe
+```
+
+---
+
 ## 🎯 Choose your deploy trigger (all included)
 
 | Trigger | Deploy speed | GitHub Actions minutes | Runner used? | Works on | Setup |
