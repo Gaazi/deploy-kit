@@ -152,6 +152,8 @@ fi
 
 COMMIT_AUTHOR="$(git -C "$WORKSPACE" log -1 --pretty=format:'%an' "$NEW_SHA" 2>/dev/null || echo 'Unknown')"
 COMMIT_MSG="$(git -C "$WORKSPACE" log -1 --pretty=format:'%s' "$NEW_SHA" 2>/dev/null || echo '')"
+# HTML-escape the commit message (Telegram parse_mode=HTML breaks on & < >)
+COMMIT_MSG="$(printf '%s' "$COMMIT_MSG" | sed -e 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')"
 
 notify "🚀 <b>Deploy started</b> ($SITE_DOMAIN · $BRANCH)
 <code>${OLD_SHA:0:10}</code> → <code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
@@ -279,6 +281,7 @@ if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
         # cron/Actions trigger skips it (files are already rolled back to PREV_SHA).
         # .deployed_sha stays PREV_SHA (rollback.sh set it) — manual rollback stays correct.
         echo "$NEW_SHA" > "$WORKSPACE/.failed_sha" 2>/dev/null || true
+        AUTO_ROLLED_BACK=1
         notify "⚠️ <b>Health FAILED — Auto-rollback executed</b> ($SITE_DOMAIN · $BRANCH)
 Rolled back from <code>${NEW_SHA:0:10}</code> to <code>${PREV_SHA:0:10}</code>
 Check server log: $LOG" "Deploy Health FAILED (Auto-Rolled Back): $SITE_DOMAIN ($BRANCH)"
@@ -303,3 +306,4 @@ else
 fi
 
 echo "✅ Deploy complete: $BRANCH @ ${NEW_SHA:0:10} (${DEPLOY_DURATION}s)"
+[ "${AUTO_ROLLED_BACK:-0}" = "1" ] && echo "⚠️ Note: health failed — auto-rolled back to previous version. Fix the code and push again."
