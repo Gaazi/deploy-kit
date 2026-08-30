@@ -141,8 +141,10 @@ if [ -z "$NEW_SHA" ]; then
   exit 1
 fi
 OLD_SHA="$(cat "$WORKSPACE/.deployed_sha" 2>/dev/null || echo none)"
+FAILED_SHA="$(cat "$WORKSPACE/.failed_sha" 2>/dev/null || echo '')"
 
-if [ "$OLD_SHA" = "$NEW_SHA" ]; then
+# skip if: no new commit, OR this exact SHA already failed health + was auto-rolled-back
+if [ "$OLD_SHA" = "$NEW_SHA" ] || { [ -n "$FAILED_SHA" ] && [ "$FAILED_SHA" = "$NEW_SHA" ]; }; then
   log "No new commit on $BRANCH ($NEW_SHA) — skip"
   echo "⏭️ No new commit on $BRANCH — skip (deployed: ${NEW_SHA:0:10})"
   exit 0
@@ -260,6 +262,7 @@ if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
     [ "$i" -le "$RETRY" ] && sleep 5
   done
   if [ "$OK" -eq 1 ]; then
+    rm -f "$WORKSPACE/.failed_sha" 2>/dev/null   # deploy succeeded — clear failed marker
     notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH) — health OK
 <code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
 💬 <i>$COMMIT_MSG</i>
@@ -272,10 +275,10 @@ if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
       if [ -n "$PREV_SHA" ]; then
         log "Health FAILED — initiating auto-rollback to $PREV_SHA"
         ROLLBACK_AUTO=1 DEPLOY_LOCK_HELD=1 /bin/bash "${SCRIPT_DIR}/rollback.sh" "$BRANCH" "$PREV_SHA" >> "$LOG" 2>&1 || true
-        # stop re-deploy loop: mark NEW_SHA (=broken) as "seen" so the next
-        # cron/Actions trigger sees OLD_SHA==NEW_SHA and skips (files are
-        # already rolled back to PREV_SHA by rollback.sh)
-        echo "$NEW_SHA" > "$WORKSPACE/.deployed_sha" 2>/dev/null || true
+        # stop re-deploy loop: mark the broken SHA as "failed" so the next
+        # cron/Actions trigger skips it (files are already rolled back to PREV_SHA).
+        # .deployed_sha stays PREV_SHA (rollback.sh set it) — manual rollback stays correct.
+        echo "$NEW_SHA" > "$WORKSPACE/.failed_sha" 2>/dev/null || true
         notify "⚠️ <b>Health FAILED — Auto-rollback executed</b> ($SITE_DOMAIN · $BRANCH)
 Rolled back from <code>${NEW_SHA:0:10}</code> to <code>${PREV_SHA:0:10}</code>
 Check server log: $LOG" "Deploy Health FAILED (Auto-Rolled Back): $SITE_DOMAIN ($BRANCH)"
