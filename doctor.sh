@@ -62,8 +62,8 @@ if [ ! -f "$CONFIG_FILE" ]; then
 fi
 ok "config.sh found"
 
-# Check file permissions
-CONFIG_PERMS="$(stat -c %a "$CONFIG_FILE" 2>/dev/null || stat -f %Op "$CONFIG_FILE" 2>/dev/null || echo '')"
+# Check file permissions (GNU: stat -c %a → "600", BSD: stat -f %Lp → "600")
+CONFIG_PERMS="$(stat -c %a "$CONFIG_FILE" 2>/dev/null || stat -f %Lp "$CONFIG_FILE" 2>/dev/null || echo '')"
 if [ "$CONFIG_PERMS" = "600" ] || [ "$CONFIG_PERMS" = "400" ]; then
   ok "config.sh permissions secure ($CONFIG_PERMS)"
 else

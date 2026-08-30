@@ -89,9 +89,13 @@ handler() {
   AUTHORIZED=0
   if [ -n "$SECRET" ]; then
     if [ -n "$HUB_SIG" ]; then
-      # native GitHub webhook — verify HMAC-SHA256
+      # native GitHub webhook — verify HMAC-SHA256 (constant-time via double-HMAC)
       EXPECTED="sha256=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SECRET" 2>/dev/null | sed 's/.* //')"
-      [ "$HUB_SIG" = "$EXPECTED" ] && AUTHORIZED=1
+      # constant-time: HMAC both strings with a nonce — if equal, HMACs match
+      NONCE="$$.$RANDOM"
+      H1="$(printf '%s' "$HUB_SIG" | openssl dgst -sha256 -hmac "$NONCE" 2>/dev/null)"
+      H2="$(printf '%s' "$EXPECTED" | openssl dgst -sha256 -hmac "$NONCE" 2>/dev/null)"
+      [ "$H1" = "$H2" ] && AUTHORIZED=1
     elif [ -n "$SECRET_HEADER" ] && [ "$SECRET_HEADER" = "$SECRET" ]; then
       AUTHORIZED=1
     fi

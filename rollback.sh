@@ -71,7 +71,9 @@ if [ "${DEPLOY_LOCK_HELD:-0}" != "1" ] && [ "$LOCK_PID" != "$PPID" ]; then
   if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     # stale if: pid file empty (crashed between mkdir and pid write) OR pid is a dead process
     if [ ! -s "$LOCK_DIR/pid" ] || { [ -n "$LOCK_PID" ] && ! kill -0 "$LOCK_PID" 2>/dev/null; }; then
-      rm -rf "$LOCK_DIR"
+      # atomic: rename stale lock to temp, then mkdir — no gap for races
+      mv "$LOCK_DIR" "$LOCK_DIR.stale.$$" 2>/dev/null
+      rm -rf "$LOCK_DIR.stale.$$" 2>/dev/null &
       mkdir "$LOCK_DIR" 2>/dev/null || { echo "❌ A deploy is running — wait, then retry rollback"; exit 1; }
     else
       echo "❌ A deploy is currently running — wait for it to finish, then retry rollback"

@@ -25,7 +25,7 @@ esac
 [ "$MIN" -lt 1 ] && MIN=1   # 0/negative → 1 (valid cron interval)
 BRANCH="${2:-${DEFAULT_BRANCH:-main}}"
 LOG="${LOG_FILE:-$HOME/deploy.log}"
-LINE="*/$MIN * * * * /bin/bash $SCRIPT_DIR/auto_deploy.sh $BRANCH >> $LOG 2>&1"
+LINE="*/$MIN * * * * /bin/bash '$SCRIPT_DIR/auto_deploy.sh' '$BRANCH' >> '$LOG' 2>&1"
 
 if command -v crontab >/dev/null 2>&1; then
   # install, removing any older deploy line for this branch first
