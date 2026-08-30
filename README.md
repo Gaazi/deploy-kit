@@ -13,29 +13,29 @@
 | **Hosting** | cPanel (shared) · VPS · Docker |
 | **Triggers** | GitHub Actions (hosted/self-hosted) · Webhook · Cron |
 | **Resource** | runner = ~6s trigger only · 0-min options (webhook/cron) |
-| **Setup** | `quickstart.sh` — 1 command, kuch padhna nahi |
+| **Setup** | `quickstart.sh` — 1 command, no reading needed |
 | **License** | MIT — free, public-ready |
 
-**Key ideas:** config-driven (1 `config.sh`, sab optional) · server does all the work · free GitHub limits never run out.
+**Key ideas:** config-driven (1 `config.sh`, everything optional) · server does all the work · free GitHub limits never run out.
 
 ---
 
-## ⚡ Quickstart (1 command — kuch padhne ki zaroorat nahi)
+## ⚡ Quickstart (1 command — no reading needed)
 
 ```bash
-# Server pe ~/deploy-kit/ mein:
+# On the server, in ~/deploy-kit/:
 /bin/bash quickstart.sh
 ```
 
-Yeh ek hi command sab karta hai:
-1. **setup** → config.sh ban jata hai (Enter dabao = recommended)
+This one command does everything:
+1. **setup** → creates config.sh (press Enter = recommended)
 2. **keygen** → SSH keys + GitHub copy-paste blocks
-3. **detect** → project khud pehchanta hai
-4. **test** → kit khud ko verify karta hai
+3. **detect** → detects your project automatically
+4. **test** → verifies the kit itself
 
-Phir bas GitHub pe workflow copy + push. **Done — 5 min.**
+Then just copy the workflow to GitHub + push. **Done — 5 min.**
 
-> Neeche sab detail mein hai — sirf zaroorat par padho.
+> Everything below is detailed — read it only when you need it.
 
 ---
 
@@ -43,8 +43,8 @@ Phir bas GitHub pe workflow copy + push. **Done — 5 min.**
 
 ```
 GitHub push (dev/demo/main)
-   → GitHub Actions trigger (~6s, fire-and-forget)      ← RUNNER: sirf trigger
-   → On the server: auto_deploy.sh <branch>             ← SERVER: sara kaam yahan
+   → GitHub Actions trigger (~6s, fire-and-forget)      ← RUNNER: trigger only
+   → On the server: auto_deploy.sh <branch>             ← SERVER: all work here
    → git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health check → [Telegram]
    → Site live
 ```
@@ -53,24 +53,24 @@ GitHub push (dev/demo/main)
 
 ## 🖥️ Runner vs Server — who does what (minimum resource)
 
-> **Principle: sara kaam server pe hota hai. Runner sirf wo kaam karta hai jo runner ke
-> baghair nahi ho sakta — push ka notification (SSH trigger).**
+> **Principle: all work happens on the server. The runner only does what can't be done
+> without it — the push notification (SSH trigger).**
 
-| Kaam | Kahin hota hai? |
+| Task | Where it happens |
 |------|-----------------|
-| Push detect karna | **Runner** (isliye hai — GitHub ko batana zaroori hai) |
-| SSH trigger (nohup) | **Runner** (~6s, phir khatam) |
+| Detect push | **Runner** (that's its job — it tells GitHub's systems) |
+| SSH trigger (nohup) | **Runner** (~6s, then done) |
 | git fetch / clone | **Server** |
 | Files sync (rsync) | **Server** |
 | Build (`BUILD_CMD`) | **Server** |
 | DB backup | **Server** |
-| **Migrate** (`MIGRATE_CMD`) | **Server** — sirf agar config mein ho |
-| **Restart** (`RESTART_METHOD`) | **Server** — sync ke baad |
+| **Migrate** (`MIGRATE_CMD`) | **Server** — only if set in config |
+| **Restart** (`RESTART_METHOD`) | **Server** — after sync |
 | Health check | **Server** |
 | Telegram alert | **Server** |
 
-Order (server pe, har deploy): **sync files → [backup] → [migrate] → [restart] → health**.
-Runner kuch aur nahi karta — na checkout, na build, na migrate. Sab kam resource server pe, runner bilkul halka.
+Order (on the server, every deploy): **sync files → [backup] → [migrate] → [restart] → health**.
+The runner does nothing else — no checkout, no build, no migrate. All the work stays on the server, the runner stays light.
 
 ---
 
@@ -78,7 +78,7 @@ Runner kuch aur nahi karta — na checkout, na build, na migrate. Sab kam resour
 
 | File | What it does |
 |------|---------------|
-| `quickstart.sh` | ⚡ **1 command — sab kuch** (setup + keygen + detect + test) |
+| `quickstart.sh` | ⚡ **1 command — everything** (setup + keygen + detect + test) |
 | `config.example.sh` | **Settings template** — create `config.sh` and fill in your values |
 | `setup.sh` | **Beginner setup wizard** — YES/NO questions, press Enter for recommended, creates config.sh itself |
 | `setup-quick.sh` | **Paste setup** — paste all your values at once, no questions |
@@ -238,20 +238,20 @@ That's it — one key pair works both ways (server → GitHub clone + GitHub →
 # Reads your repo and fills APP_TYPE / build / migrate / restart by itself:
 /bin/bash detect.sh
 #   → says "Apply these to config.sh? (yes/no)" → yes
-#   → koi technical cheez yaad rakhne ki zaroorat nahi
+#   → no technical knowledge needed
 ```
 
-### Step 5: GitHub Actions setup — KAUNSA workflow copy karo?
+### Step 5: GitHub Actions setup — which workflow to copy?
 
-**3 workflow files hain — sirf 1 chahiye. Zyada tar log yeh use karte hain:**
+**3 workflow files exist — you only need 1. Most users use this one:**
 
-| File | Kab use karo | Setup chahiye? |
-|------|--------------|----------------|
-| **`deploy.yml.example`** ✅ | **SABSE ZYADA USERS** — GitHub ka free hosted runner (2000 min/mo) | sirf 4 Secrets |
-| `deploy-selfhosted.yml.example` | sirf agar VPS pe `runner.sh` chalaya ho | runner.sh (VPS) |
-| `deploy-webhook.yml.example` | sirf agar VPS pe `webhook.sh start` kiya ho | webhook.sh (VPS) |
+| File | When to use | Extra setup needed? |
+|------|--------------|---------------------|
+| **`deploy.yml.example`** ✅ | **MOST USERS** — GitHub's free hosted runner (2000 min/mo) | only 4 Secrets |
+| `deploy-selfhosted.yml.example` | only if you ran `runner.sh` on a VPS | runner.sh (VPS) |
+| `deploy-webhook.yml.example` | only if you ran `webhook.sh start` on a VPS | webhook.sh (VPS) |
 
-**Default (ya samajh na aaye to): `deploy.yml.example` — yahi copy karo:**
+**Default (if unsure): copy `deploy.yml.example`:**
 
 ```bash
 # In your project repo:
@@ -260,7 +260,7 @@ cp ~/deploy-kit/.github/workflows/deploy.yml.example .github/workflows/deploy.ym
 ```
 
 Edit your **branch names** in `deploy.yml` (default: dev/demo/main).
-Agar self-hosted/webhook use karte ho to usi naam ka file copy karo — warna deploy.yml hi sahi hai.
+If you use self-hosted/webhook, copy that file instead — otherwise deploy.yml is the right choice.
 
 ### Step 6: Push it 🎉
 
@@ -270,18 +270,18 @@ Push (dev/demo/main) → GitHub Actions (~6s) → server deploy → Telegram ale
 
 ---
 
-## 🎬 Worked Example (generic — aapke project ke hisaab se fill karo)
+## 🎬 Worked Example (generic — fill in your own project values)
 
-Maan lo aap ek **Node app** deploy kar rahe ho. Yeh hai poori flow, top se bottom:
+Imagine you are deploying a **Node app**. Here is the full flow, top to bottom:
 
-### 1. `quickstart.sh` chalao (server pe)
+### 1. Run `quickstart.sh` (on the server)
 
 ```bash
 cd ~/deploy-kit
 /bin/bash quickstart.sh
 ```
 
-Aap sirf yeh answer karte ho (Enter = recommended):
+You only answer these questions (Enter = recommended):
 
 ```
 Server login username [cpuser]: cpuser
@@ -289,11 +289,11 @@ Server host or IP [your-server.com]: myhost.com
 Live domain [myapp.com]: myapp.com
 App folder [/home/cpuser/myapp]: /home/cpuser/myapp
 GitHub repo SSH URL [git@github.com:user/repo.git]: git@github.com:you/myapp.git
-App type [python]: node          ← detect.sh baad mein khud bhi confirm karega
-... (baaki sab Enter dabate jao)
+App type [python]: node          ← detect.sh will also confirm this later
+... (press Enter for the rest)
 ```
 
-### 2. `config.sh` aise banta hai (example — koi real data nahi)
+### 2. `config.sh` looks like this (example — no real data)
 
 ```bash
 SERVER_USER="cpuser"
@@ -303,27 +303,27 @@ APP_DIR="/home/cpuser/myapp"
 REPO_URL="git@github.com:you/myapp.git"
 
 APP_TYPE="node"
-BUILD_CMD="npm install && npm run build"   # detect.sh ne suggest kiya
-RESTART_METHOD="passenger"                 # cPanel ke liye
+BUILD_CMD="npm install && npm run build"   # suggested by detect.sh
+RESTART_METHOD="passenger"                 # cPanel
 
-DB_BACKUP="no"         # nahi chahiye to skip
+DB_BACKUP="no"         # leave empty if not needed
 HEALTH_URL="https://myapp.com/"            # optional
-TELEGRAM_BOT_TOKEN=""  # na ho to alerts nahi
+TELEGRAM_BOT_TOKEN=""  # leave empty → no alerts
 ```
 
-> **Rule:** jo cheez project mein nahi → usse `""` chhoro. Script skip kar deti hai. Sirf `REPO_URL` + `APP_DIR` zaroori.
+> **Rule:** if your project doesn't have something → leave it `""`. The script skips it automatically. Only `REPO_URL` + `APP_DIR` are required.
 
-### 3. GitHub mein workflow + push
+### 3. Workflow + push on GitHub
 
 ```bash
-# aapke PROJECT repo mein (myapp):
+# in your PROJECT repo (myapp):
 mkdir -p .github/workflows
 cp ~/deploy-kit/.github/workflows/deploy.yml.example .github/workflows/deploy.yml
-# branch names edit karo (dev/demo/main) + 4 Secrets set karo (keygen se)
+# edit branch names (dev/demo/main) + set 4 Secrets (from keygen)
 git add . && git commit -m "deploy setup" && git push
 ```
 
-### 4. Kya hota hai (deploy log)
+### 4. What happens (deploy log)
 
 ```
 🚀 Deploy started (myapp.com · main)
@@ -332,11 +332,11 @@ abc1234 → def5678
    Time: 34s
 ```
 
-### 5. Rollback (agar kuch toot jaye)
+### 5. Rollback (if something breaks)
 
 ```bash
-/bin/bash ~/deploy-kit/rollback.sh main        # last version pe wapas
-/bin/bash ~/deploy-kit/rollback.sh main <SHA>  # specific commit pe
+/bin/bash ~/deploy-kit/rollback.sh main        # back to the last version
+/bin/bash ~/deploy-kit/rollback.sh main <SHA>  # back to a specific commit
 ```
 
 ---
@@ -351,30 +351,30 @@ abc1234 → def5678
 | **Webhook (Actions)** ⚡⚡ | **~1-2s** | ~1 / deploy | yes (VM) | VPS only | `webhook.sh` + `deploy-webhook.yml.example` |
 | **Cron** | within N min | **0** | no | cPanel + VPS | `cron.sh` |
 
-- **Chhota project, kuch pushes** → Hosted Actions fine (simple).
-- **5-6 second chahte ho, VPS hai** → Self-hosted runner (`runner.sh`), zero VM boot.
-- **Sabse fast (~1-2s) + ZERO runner** → **Native webhook**: GitHub seedha POST karta hai, runner bilkul nahi.
-- **Limit ki koi fikr nahi chahiye** → Cron (`cron.sh`), unlimited.
+- **Small project, few pushes** → Hosted Actions is fine (simple).
+- **You want 5-6s and have a VPS** → Self-hosted runner (`runner.sh`), zero VM boot.
+- **Fastest (~1-2s) + ZERO runner** → **Native webhook**: GitHub POSTs directly, no runner at all.
+- **You never want to worry about the limit** → Cron (`cron.sh`), unlimited.
 
 All of them call the **same `auto_deploy.sh`** — switch anytime, nothing else changes.
 
 ### 🌐 Native webhook (0 runner) — recommended for VPS
 
-GitHub ke **built-in webhook** se deploy karo — **koi Actions runner hi nahi chalta**, GitHub seedha aapke server pe POST karta hai (~1-2s, 0 Actions minutes):
+Deploy using GitHub's **built-in webhook** — **no Actions runner runs at all**, GitHub POSTs directly to your server (~1-2s, 0 Actions minutes):
 
 ```bash
-# 1. Server pe listener chalu karo (VPS only):
+# 1. Start the listener on the server (VPS only):
 /bin/bash webhook.sh start
-# 2. config.sh mein secret set karo (random lambi string):
+# 2. Set a secret in config.sh (long random string):
 #    DEPLOY_WEBHOOK_SECRET="<random-string>"
 # 3. GitHub → repo → Settings → Webhooks → Add webhook:
 #    Payload URL:  http://SERVER_IP:9000/webhook/deploy/
 #    Content type: application/json
-#    Secret:       <wohi random-string>
+#    Secret:       <the same random string>
 #    Which events: Just the push event
 ```
 
-Ab har push GitHub seedha server pe bhejega — HMAC-secret verified, branch `refs/heads/...` se milta hai, `auto_deploy.sh` chalta hai. **Runner = 0, limit = 0 use.**
+Now every push is sent directly from GitHub to your server — HMAC-secret verified, the branch is read from `refs/heads/...`, and `auto_deploy.sh` runs. **Runner = 0, limit = 0.**
 
 ---
 

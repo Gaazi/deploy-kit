@@ -6,7 +6,7 @@
 
 ```
 git push (any branch)
-  → GitHub Actions workflow (deploy.yml.example) triggers (~6s)      ← RUNNER: sirf trigger
+  → GitHub Actions workflow (deploy.yml.example) triggers (~6s)      ← RUNNER: trigger only
       - no checkout, no build, no migrate — only the SSH fire-and-forget
         ssh user@server "nohup /bin/bash ~/deploy-kit/auto_deploy.sh <branch> &"
   → server: auto_deploy.sh <branch> runs in background (nohup)       ← SERVER: sara kaam
@@ -57,7 +57,7 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 - Full local integration test: real file:// git repo → deploy → idempotent skip → new commit → rollback
 - No network needed; everything in a temp dir. Run before committing changes.
 
-## Quickstart (quickstart.sh) — 1 command sab kuch
+## Quickstart (quickstart.sh) — 1 command, everything
 
 ```
 /bin/bash quickstart.sh

@@ -28,7 +28,7 @@
 | `cron.sh` | Install cron job → deploy every N min, 0 GitHub Actions |
 | `runner.sh` | Self-hosted runner install (VPS) → ~6s deploys, 0 Actions minutes |
 | `webhook.sh` | socat HTTP listener (VPS) → GitHub POST triggers deploy, ~1-2s, secret-verified |
-| `quickstart.sh` | **1 command — sab kuch** (setup + keygen + detect + test) |
+| `quickstart.sh` | **1 command — everything** (setup + keygen + detect + test) |
 | `test.sh` | Self-test: syntax + missing-config + full local file:// integration |
 
 ## Config key categories (grep `reference_config.md` for full detail)
@@ -80,7 +80,7 @@
 - **Trigger choice:** hosted / self-hosted (`runner.sh`) / webhook (`webhook.sh`) / cron — README "Choose your trigger" table
 - **Webhook mode (NEW):** `webhook.sh` (socat HTTP listener, VPS only, start/stop/status) + `deploy-webhook.yml.example` + `DEPLOY_WEBHOOK_SECRET`/`WEBHOOK_PORT` keys — ~1-2s deploys, 0 Actions minutes. Supports BOTH native GitHub webhook (Settings → Webhooks, HMAC `X-Hub-Signature-256` verified, branch from `refs/heads/...`) AND custom `X-Deploy-Secret` header. Native = 0 runner at all.
 - **Resource budget (MAIN GOAL):** documented in AGENTS.md + README + MEMORY — GitHub budget (hosted ~1min, webhook/cron/self-hosted 0) + server budget (single-branch, SHA-skip, log rotation, DB_BACKUP_KEEP, lock). Never add deploy work to a workflow.
-- **Confusion cleanup:** workflow .example headers now say WHO should use each (deploy.yml = default/all, deploy-selfhosted = only if runner.sh, deploy-webhook = only if webhook.sh). README Step 5 "KAUNSA workflow copy karo?" table. Health check now retries (`HEALTH_RETRY`, default 3) — app boot time tolerant.
+- **Confusion cleanup:** workflow .example headers now say WHO should use each (deploy.yml = default/all, deploy-selfhosted = only if runner.sh, deploy-webhook = only if webhook.sh). README Step 5 "which workflow to copy?" table. Health check now retries (`HEALTH_RETRY`, default 3) — app boot time tolerant.
 - **Runner-lite:** paths-ignore `docs/**`, `permissions: {}`, CI installs rsync only if missing
 - **Fully dynamic:** `detect.sh` auto-detects stack; `HEALTH_WAIT` key; zero hardcoded values
 - **Zero-Actions:** `cron.sh`; `DB_BACKUP_KEEP`

@@ -1,29 +1,29 @@
 #!/bin/bash
 # ============================================================
-# DEPLOY KIT — quickstart.sh (1 command, sab kuch)
+# DEPLOY KIT — quickstart.sh (1 command, everything)
 # ------------------------------------------------------------
 #   /bin/bash quickstart.sh
-# SIRF YEHI EK COMMAND CHALAO — kuch aur padhna/yaad nahi.
-# Yeh kar deta hai:
-#   1. setup.sh      → config.sh banta hai (Enter dabao = recommended)
-#   2. keygen.sh     → SSH keys + GitHub ke liye copy-paste blocks
-#   3. detect.sh     → aapka project khud pehchanta hai (APP_TYPE etc.)
-#   4. test.sh       → kit khud ko test karta hai
-# Phir bas GitHub pe workflow copy + push karo. Done.
+# RUN THIS ONE COMMAND — nothing else to read or remember.
+# It does:
+#   1. setup.sh      → creates config.sh (press Enter = recommended)
+#   2. keygen.sh     → SSH keys + GitHub copy-paste blocks
+#   3. detect.sh     → detects your project (APP_TYPE etc.)
+#   4. test.sh       → verifies the kit itself
+# Then just copy the workflow to GitHub + push. Done.
 # ============================================================
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 echo "═══════════════════════════════════════════════════"
 echo "  DEPLOY KIT — Quickstart (1 command)"
-echo "  * Enter dabate jao — recommended answer aa jata hai"
-echo "  * Kuch technical nahi poochte jo aap na jante ho"
+echo "  * Press Enter — you get the recommended answer"
+echo "  * No technical questions you don't understand"
 echo "═══════════════════════════════════════════════════"
 echo ""
 
 # ── 1. Setup wizard → config.sh ──
 echo "【1/4】 Setup (config.sh)"
-echo "      Enter dabate jao, zaroori values paste karo"
+echo "      Press Enter, paste required values"
 echo ""
 /bin/bash setup.sh || { echo "❌ setup.sh failed"; exit 1; }
 
@@ -35,7 +35,7 @@ echo ""
 
 # ── 3. Auto-detect project ──
 echo ""
-echo "【3/4】 Auto-detect your project (bilkul dynamic)"
+echo "【3/4】 Auto-detect your project (fully dynamic)"
 echo ""
 /bin/bash detect.sh <<< "y" 2>/dev/null || /bin/bash detect.sh
 
@@ -50,13 +50,13 @@ echo "════════════════════════�
 echo "  ✅ QUICKSTART COMPLETE"
 echo "═══════════════════════════════════════════════════"
 echo ""
-echo "  Ab sirf yeh 2 cheezein baqi hain (2 min):"
+echo "  Only 2 steps left (2 min):"
 echo ""
-echo "  1. GitHub repo mein workflow copy karo:"
+echo "  1. Copy the workflow into your GitHub repo:"
 echo "     cp ~/deploy-kit/.github/workflows/deploy.yml.example"
 echo "        .github/workflows/deploy.yml"
 echo ""
-echo "  2. Push karo → deploy automatic 🎉"
+echo "  2. Push → deploy happens automatically 🎉"
 echo ""
-echo "  Zaroorat ho to yeh padho: README.md (optional)"
+echo "  Need more detail? Read README.md (optional)"
 echo "═══════════════════════════════════════════════════"

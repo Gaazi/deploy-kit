@@ -1,15 +1,15 @@
 # GitHub Actions workflow — DEPLOY KIT (SELF-HOSTED runner, ~6s)
 # ============================================================
-# ⚠️ SIRF TAB USE KARO AGAR AAPNE runner.sh CHALAYA HO (VPS only)!
+# ⚠️ USE THIS ONLY IF YOU RAN runner.sh (VPS only)!
 # ------------------------------------------------------------
-# KAUN use kare:  SIRF VPS users jinhone server pe: /bin/bash runner.sh
-#                 chala kar apna khud ka runner install kiya ho.
-#                 Agar yeh NAHI kiya to yeh workflow FAIL hoga.
-# KYA karta hai:  aapka khud ka runner (server pe) chalta hai → NO VM boot
-#                 → ~5-6s deploys, 0 Actions minutes (free).
-# DEFAULT CHOICE: zyada tar users ko deploy.yml.example (hosted) use karna
-#                 chahiye — yeh file sirf runner.sh wale VPS users ke liye.
-# COPY KAISE:     cp deploy-selfhosted.yml.example .github/workflows/deploy-selfhosted.yml
+# WHO should use:  VPS users who ran: /bin/bash runner.sh
+#                  on the server to install their own runner.
+#                  If you did NOT run this, the workflow will FAIL.
+# WHAT it does:    your own runner (on the server) runs → NO VM boot
+#                  → ~5-6s deploys, 0 Actions minutes (free).
+# DEFAULT CHOICE:  most users should use deploy.yml.example (hosted) —
+#                  this file is only for VPS users who ran runner.sh.
+# HOW TO COPY:     cp deploy-selfhosted.yml.example .github/workflows/deploy-selfhosted.yml
 # ============================================================
 
 name: Deploy (self-hosted)

@@ -1,17 +1,17 @@
 # GitHub Actions workflow — DEPLOY KIT (WEBHOOK, ~1-2s)
 # ============================================================
-# ⚠️ SIRF TAB USE KARO AGAR AAPNE webhook.sh CHALAYA HO (VPS only)!
+# ⚠️ USE THIS ONLY IF YOU RAN webhook.sh (VPS only)!
 # ------------------------------------------------------------
-# KAUN use kare:  SIRF VPS users jinhone server pe: /bin/bash webhook.sh start
-#                 chala kar listener banaya ho.
-#                 Agar yeh NAHI kiya to yeh workflow FAIL hoga.
-# KYA karta hai:  GitHub POST bhejta hai webhook.sh ko → ~1-2s deploys.
-#                 ️ NATIVE option (aur bhi behtar): GitHub → Settings →
-#                 Webhooks — usme runner bilkul nahi chalta (yeh file bhi
-#                 zaroori nahi). Yeh file sirf Actions UI/log chahiye ho to.
-# DEFAULT CHOICE: zyada tar users ko deploy.yml.example (hosted) use karna
-#                 chahiye — yeh file sirf webhook.sh wale VPS users ke liye.
-# COPY KAISE:     cp deploy-webhook.yml.example .github/workflows/deploy-webhook.yml
+# WHO should use:  VPS users who ran: /bin/bash webhook.sh start
+#                  on the server to start the listener.
+#                  If you did NOT run this, the workflow will FAIL.
+# WHAT it does:    GitHub POSTs to webhook.sh → ~1-2s deploys.
+#                  💡 NATIVE option (even better): GitHub → Settings →
+#                  Webhooks — no runner at all (this file is not needed
+#                  either). Use this file only if you want the Actions UI/log.
+# DEFAULT CHOICE:  most users should use deploy.yml.example (hosted) —
+#                  this file is only for VPS users who ran webhook.sh.
+# HOW TO COPY:     cp deploy-webhook.yml.example .github/workflows/deploy-webhook.yml
 # ============================================================
 
 name: Deploy (webhook)

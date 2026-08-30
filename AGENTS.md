@@ -82,7 +82,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 
 | File | Purpose |
 |------|---------|
-| `quickstart.sh` | **1 command — sab kuch** (setup + keygen + detect + test) |
+| `quickstart.sh` | **1 command — everything** (setup + keygen + detect + test) |
 | `auto_deploy.sh` | Main deploy script — git → rsync → optional steps → health → notifications |
 | `rollback.sh` | Roll back to previous commit + optional DB restore |
 | `doctor.sh` | **Preflight check** — diagnose server environment, config, tools, and permissions |
