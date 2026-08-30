@@ -1,16 +1,16 @@
 # GitHub Actions workflow — DEPLOY KIT (DEFAULT: hosted runner, FREE 2000 min/mo)
 # ============================================================
-# ✅ YEH WO FILE HAI JO ZYADA TAR USERS COPY KARTE HAIN
+# ✅ THIS IS THE FILE MOST USERS COPY
 # ------------------------------------------------------------
-# KAUN use kare:  SAB (cPanel + VPS) — koi extra setup nahi chahiye
-# KYA karta hai:  GitHub ka FREE hosted runner (ubuntu-latest) chalta hai,
-#                 ek chhota SSH trigger bhejta hai (~1 min total).
-#                 Free plan = 2000 min/month ≈ 2000 deploys.
-# COPY KAISE:     cp deploy.yml.example .github/workflows/deploy.yml
-# THEN:           branch names edit karo + 4 GitHub Secrets set karo
-#                 (SSH_PRIVATE_KEY, SERVER_HOST, SERVER_USER, SSH_PORT)
-# OTHER FILES:    deploy-selfhosted.yml  = SIRF VPS user jo runner.sh chalaye
-#                 deploy-webhook.yml     = SIRF VPS user jo webhook.sh chalaye
+# WHO should use:  EVERYONE (cPanel + VPS) — no extra setup needed
+# WHAT it does:    GitHub's free hosted runner (ubuntu-latest) runs,
+#                  sends a tiny SSH trigger (~1 min total).
+#                  Free plan = 2000 min/month ≈ 2000 deploys.
+# HOW TO COPY:     cp deploy.yml.example .github/workflows/deploy.yml
+# THEN:            edit branch names + set 4 GitHub Secrets
+#                  (SSH_PRIVATE_KEY, SERVER_HOST, SERVER_USER, SSH_PORT)
+# OTHER FILES:     deploy-selfhosted.yml  = only for VPS users who ran runner.sh
+#                  deploy-webhook.yml     = only for VPS users who ran webhook.sh
 # ============================================================
 
 name: Deploy
