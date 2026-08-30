@@ -306,4 +306,4 @@ else
 fi
 
 echo "✅ Deploy complete: $BRANCH @ ${NEW_SHA:0:10} (${DEPLOY_DURATION}s)"
-[ "${AUTO_ROLLED_BACK:-0}" = "1" ] && echo "⚠️ Note: health failed — auto-rolled back to previous version. Fix the code and push again."
+[ "${AUTO_ROLLED_BACK:-0}" = "1" ] && echo "⚠️ Note: health failed — auto-rolled back to previous version. Fix the code and push again." || true
