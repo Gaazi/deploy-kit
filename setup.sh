@@ -115,9 +115,28 @@ if yesno "Do you want Telegram alerts when a deploy finishes?" no; then
   TELEGRAM_CHAT_ID=$(ask "Chat ID (ask @userinfobot after messaging the bot)" "")
 fi
 
+DISCORD_WEBHOOK_URL=""
+if yesno "Do you want Discord webhook alerts?" no; then
+  DISCORD_WEBHOOK_URL=$(ask "Discord Webhook URL" "")
+fi
+
+SLACK_WEBHOOK_URL=""
+if yesno "Do you want Slack webhook alerts?" no; then
+  SLACK_WEBHOOK_URL=$(ask "Slack Webhook URL" "")
+fi
+
+ALERT_EMAIL=""
+if yesno "Do you want Email alerts?" no; then
+  ALERT_EMAIL=$(ask "Alert email address" "")
+fi
+
 HEALTH_URL=""
+AUTO_ROLLBACK_ON_FAIL="no"
 if yesno "Do you want a health check after deploy? (recommended)" yes; then
   HEALTH_URL=$(ask "Health URL (Enter = https://$SITE_DOMAIN/)" "")
+  if yesno "Auto-rollback to previous version if health check fails?" no; then
+    AUTO_ROLLBACK_ON_FAIL="yes"
+  fi
 fi
 
 # ── 4. Write config.sh (all keys — same as config.example.sh) ──
@@ -158,15 +177,19 @@ DB_NAME="$DB_NAME"
 # ── Notifications ──
 TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN"
 TELEGRAM_CHAT_ID="$TELEGRAM_CHAT_ID"
+DISCORD_WEBHOOK_URL="$DISCORD_WEBHOOK_URL"
+SLACK_WEBHOOK_URL="$SLACK_WEBHOOK_URL"
+ALERT_EMAIL="$ALERT_EMAIL"
 
 # ── Webhook (VPS only) ──
 DEPLOY_WEBHOOK_SECRET=""
 WEBHOOK_PORT="9000"
 
-# ── Health check (optional) ──
+# ── Health check & Safety ──
 HEALTH_URL="$HEALTH_URL"
 HEALTH_WAIT="8"
 HEALTH_RETRY="3"
+AUTO_ROLLBACK_ON_FAIL="$AUTO_ROLLBACK_ON_FAIL"
 
 # ── Git / Advanced ──
 DEPLOY_KEY=""

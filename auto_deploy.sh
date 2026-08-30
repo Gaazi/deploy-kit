@@ -28,6 +28,8 @@ WORKSPACE="$WORKSPACE_BASE/$BRANCH"
 LOG="${LOG_FILE:-/home/$SERVER_USER/deploy.log}"
 NOW="$(date '+%F %T')"
 
+DEPLOY_START_TIME="$(date +%s)"
+
 # ── Log rotation (keep it light — 1MB cap) ─────────────────
 if [ -f "$LOG" ] && [ "$(wc -c < "$LOG" 2>/dev/null || echo 0)" -gt 1048576 ]; then
   mv "$LOG" "$LOG.1" 2>/dev/null
@@ -41,11 +43,48 @@ fi
 
 log() { echo "$NOW: $1" >> "$LOG"; }
 
+# ── Multi-channel notification helper (Telegram, Discord, Slack, Email) ──
 notify() {
+  local html_msg="$1"
+  local subject="${2:-Deploy Notification ($SITE_DOMAIN)}"
+  local plain_msg
+  plain_msg="$(echo "$html_msg" | sed -e 's/<[^>]*>//g')"
+
+  # 1. Telegram (HTML supported)
   if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
     curl -s -o /dev/null "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
       --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
-      --data-urlencode "text=$1" --data-urlencode "parse_mode=HTML" >/dev/null 2>&1 || true
+      --data-urlencode "text=$html_msg" \
+      --data-urlencode "parse_mode=HTML" >/dev/null 2>&1 || true
+  fi
+
+  # 2. Discord Webhook (JSON text)
+  if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+    local discord_json
+    discord_json="$(printf '%s' "$plain_msg" | sed 's/\\/\\\\/g; s/"/\\"/g' | awk '{printf "%s\\n", $0}')"
+    discord_json="${discord_json%\\n}"
+    curl -s -o /dev/null -H "Content-Type: application/json" \
+      -d "{\"content\": \"$discord_json\"}" \
+      "$DISCORD_WEBHOOK_URL" >/dev/null 2>&1 || true
+  fi
+
+  # 3. Slack Webhook (JSON text)
+  if [ -n "$SLACK_WEBHOOK_URL" ]; then
+    local slack_json
+    slack_json="$(printf '%s' "$plain_msg" | sed 's/\\/\\\\/g; s/"/\\"/g' | awk '{printf "%s\\n", $0}')"
+    slack_json="${slack_json%\\n}"
+    curl -s -o /dev/null -H "Content-Type: application/json" \
+      -d "{\"text\": \"$slack_json\"}" \
+      "$SLACK_WEBHOOK_URL" >/dev/null 2>&1 || true
+  fi
+
+  # 4. Email Alert (via mail or sendmail)
+  if [ -n "$ALERT_EMAIL" ]; then
+    if command -v mail >/dev/null 2>&1; then
+      printf '%s\n' "$plain_msg" | mail -s "$subject" "$ALERT_EMAIL" >/dev/null 2>&1 || true
+    elif command -v sendmail >/dev/null 2>&1; then
+      printf "To: %s\nSubject: %s\n\n%s\n" "$ALERT_EMAIL" "$subject" "$plain_msg" | sendmail -t >/dev/null 2>&1 || true
+    fi
   fi
 }
 
@@ -109,9 +148,13 @@ if [ "$OLD_SHA" = "$NEW_SHA" ]; then
   exit 0
 fi
 
+COMMIT_AUTHOR="$(git -C "$WORKSPACE" log -1 --pretty=format:'%an' "$NEW_SHA" 2>/dev/null || echo 'Unknown')"
+COMMIT_MSG="$(git -C "$WORKSPACE" log -1 --pretty=format:'%s' "$NEW_SHA" 2>/dev/null || echo '')"
+
 notify "🚀 <b>Deploy started</b> ($SITE_DOMAIN · $BRANCH)
-<code>$OLD_SHA</code> → <code>${NEW_SHA:0:10}</code>"
-log "Deploying $BRANCH: $OLD_SHA -> $NEW_SHA"
+<code>${OLD_SHA:0:10}</code> → <code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
+💬 <i>$COMMIT_MSG</i>" "Deploy Started: $SITE_DOMAIN ($BRANCH)"
+log "Deploying $BRANCH: $OLD_SHA -> $NEW_SHA ($COMMIT_AUTHOR: $COMMIT_MSG)"
 
 # ── 2. Rsync to app dir ─────────────────────────────────────
 mkdir -p "$APP_DIR"
@@ -133,7 +176,9 @@ rsync -az --delete "${RSYNC_ARGS[@]}" "$SRC_DIR/" "$APP_DIR/" >> "$LOG" 2>&1
 if [ -n "$BUILD_CMD" ]; then
   log "Running build: $BUILD_CMD"
   if ! (cd "$APP_DIR" && eval "$BUILD_CMD") >> "$LOG" 2>&1; then
-    notify "❌ <b>Deploy FAILED</b> ($SITE_DOMAIN · $BRANCH) — build failed. Check server log."
+    notify "❌ <b>Deploy FAILED (Build)</b> ($SITE_DOMAIN · $BRANCH) — build failed
+<code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
+Check server log: $LOG" "Deploy Build FAILED: $SITE_DOMAIN ($BRANCH)"
     echo "❌ Build FAILED — deploy aborted. If the site is broken, run: rollback.sh $BRANCH" | tee -a "$LOG"
     exit 1
   fi
@@ -169,7 +214,9 @@ fi
 if [ -n "$MIGRATE_CMD" ]; then
   log "Running migrate: $MIGRATE_CMD"
   if ! (cd "$APP_DIR" && eval "$MIGRATE_CMD") >> "$LOG" 2>&1; then
-    notify "❌ <b>Deploy FAILED</b> ($SITE_DOMAIN · $BRANCH) — migrate failed. Check server log."
+    notify "❌ <b>Deploy FAILED (Migrate)</b> ($SITE_DOMAIN · $BRANCH) — migrate failed
+<code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
+Check server log: $LOG" "Deploy Migration FAILED: $SITE_DOMAIN ($BRANCH)"
     echo "❌ Migrate FAILED — deploy aborted. Restore the DB from backups/predeploy/, then run: rollback.sh $BRANCH" | tee -a "$LOG"
     exit 1
   fi
@@ -195,7 +242,10 @@ esac
 [ -n "$RESTART_METHOD" ] && [ "$RESTART_METHOD" != "none" ] && log "Restart done ($RESTART_METHOD)"
 
 # ── 7. Record SHA ───────────────────────────────────────────
+[ -f "$WORKSPACE/.deployed_sha" ] && cp "$WORKSPACE/.deployed_sha" "$WORKSPACE/.previous_sha" 2>/dev/null || true
 echo "$NEW_SHA" > "$WORKSPACE/.deployed_sha"
+
+DEPLOY_DURATION=$(( $(date +%s) - DEPLOY_START_TIME ))
 
 # ── 8. Health check (optional — empty SITE_DOMAIN/HEALTH_URL = skip) ─
 HEALTH_URL="${HEALTH_URL:-https://$SITE_DOMAIN/}"
@@ -211,16 +261,38 @@ if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
   done
   if [ "$OK" -eq 1 ]; then
     notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH) — health OK
-<code>${NEW_SHA:0:10}</code>"
+<code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
+💬 <i>$COMMIT_MSG</i>
+⏱️ Time: ${DEPLOY_DURATION}s" "Deploy Successful: $SITE_DOMAIN ($BRANCH)"
     log "Health OK"
   else
-    notify "❌ <b>Deploy done but health FAILED</b> ($SITE_DOMAIN) — run rollback"
     log "Health FAILED"
+    if [ "${AUTO_ROLLBACK_ON_FAIL:-no}" = "yes" ] || [ "${AUTO_ROLLBACK_ON_FAIL:-false}" = "true" ] || [ "${AUTO_ROLLBACK_ON_FAIL:-0}" = "1" ]; then
+      PREV_SHA="$(cat "$WORKSPACE/.previous_sha" 2>/dev/null || echo '')"
+      if [ -n "$PREV_SHA" ]; then
+        log "Health FAILED — initiating auto-rollback to $PREV_SHA"
+        DEPLOY_LOCK_HELD=1 /bin/bash "${SCRIPT_DIR}/rollback.sh" "$BRANCH" "$PREV_SHA" >> "$LOG" 2>&1 || true
+        notify "⚠️ <b>Health FAILED — Auto-rollback executed</b> ($SITE_DOMAIN · $BRANCH)
+Rolled back from <code>${NEW_SHA:0:10}</code> to <code>${PREV_SHA:0:10}</code>
+Check server log: $LOG" "Deploy Health FAILED (Auto-Rolled Back): $SITE_DOMAIN ($BRANCH)"
+      else
+        log "Health FAILED — no previous version available for auto-rollback"
+        notify "❌ <b>Deploy done but health FAILED</b> ($SITE_DOMAIN · $BRANCH) — first deploy, no rollback target
+<code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
+Check server log: $LOG" "Deploy Health FAILED: $SITE_DOMAIN ($BRANCH)"
+      fi
+    else
+      notify "❌ <b>Deploy done but health FAILED</b> ($SITE_DOMAIN · $BRANCH) — run rollback
+<code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
+Check server log: $LOG" "Deploy Health FAILED: $SITE_DOMAIN ($BRANCH)"
+    fi
   fi
 else
   notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH)
-<code>${NEW_SHA:0:10}</code>"
+<code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
+💬 <i>$COMMIT_MSG</i>
+⏱️ Time: ${DEPLOY_DURATION}s" "Deploy Successful: $SITE_DOMAIN ($BRANCH)"
   log "Health check skipped (no URL)"
 fi
 
-echo "✅ Deploy complete: $BRANCH @ ${NEW_SHA:0:10}"
+echo "✅ Deploy complete: $BRANCH @ ${NEW_SHA:0:10} (${DEPLOY_DURATION}s)"

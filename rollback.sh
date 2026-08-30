@@ -18,22 +18,69 @@ WORKSPACE="$WORKSPACE_BASE/$BRANCH"
 LOG="${LOG_FILE:-/home/$SERVER_USER/deploy.log}"
 TARGET_SHA="${2:-$(cat "$WORKSPACE/.deployed_sha" 2>/dev/null)}"
 
+# ── Multi-channel notification helper (Telegram, Discord, Slack, Email) ──
+notify() {
+  local html_msg="$1"
+  local subject="${2:-Rollback Notification ($SITE_DOMAIN)}"
+  local plain_msg
+  plain_msg="$(echo "$html_msg" | sed -e 's/<[^>]*>//g')"
+
+  # 1. Telegram
+  if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+    curl -s -o /dev/null "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+      --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+      --data-urlencode "text=$html_msg" \
+      --data-urlencode "parse_mode=HTML" >/dev/null 2>&1 || true
+  fi
+
+  # 2. Discord Webhook
+  if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+    local discord_json
+    discord_json="$(printf '%s' "$plain_msg" | sed 's/\\/\\\\/g; s/"/\\"/g' | awk '{printf "%s\\n", $0}')"
+    discord_json="${discord_json%\\n}"
+    curl -s -o /dev/null -H "Content-Type: application/json" \
+      -d "{\"content\": \"$discord_json\"}" \
+      "$DISCORD_WEBHOOK_URL" >/dev/null 2>&1 || true
+  fi
+
+  # 3. Slack Webhook
+  if [ -n "$SLACK_WEBHOOK_URL" ]; then
+    local slack_json
+    slack_json="$(printf '%s' "$plain_msg" | sed 's/\\/\\\\/g; s/"/\\"/g' | awk '{printf "%s\\n", $0}')"
+    slack_json="${slack_json%\\n}"
+    curl -s -o /dev/null -H "Content-Type: application/json" \
+      -d "{\"text\": \"$slack_json\"}" \
+      "$SLACK_WEBHOOK_URL" >/dev/null 2>&1 || true
+  fi
+
+  # 4. Email Alert
+  if [ -n "$ALERT_EMAIL" ]; then
+    if command -v mail >/dev/null 2>&1; then
+      printf '%s\n' "$plain_msg" | mail -s "$subject" "$ALERT_EMAIL" >/dev/null 2>&1 || true
+    elif command -v sendmail >/dev/null 2>&1; then
+      printf "To: %s\nSubject: %s\n\n%s\n" "$ALERT_EMAIL" "$subject" "$plain_msg" | sendmail -t >/dev/null 2>&1 || true
+    fi
+  fi
+}
+
 # ── Deploy lock (same lock as auto_deploy.sh — no clash) ────
 LOCK_DIR="$WORKSPACE_BASE/.deploy-lock"
 mkdir -p "$WORKSPACE_BASE"
-if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-  LOCK_PID="$(cat "$LOCK_DIR/pid" 2>/dev/null)"
-  # stale if: pid file empty (crashed between mkdir and pid write) OR pid is a dead process
-  if [ ! -s "$LOCK_DIR/pid" ] || { [ -n "$LOCK_PID" ] && ! kill -0 "$LOCK_PID" 2>/dev/null; }; then
-    rm -rf "$LOCK_DIR"
-    mkdir "$LOCK_DIR" 2>/dev/null || { echo "❌ A deploy is running — wait, then retry rollback"; exit 1; }
-  else
-    echo "❌ A deploy is currently running — wait for it to finish, then retry rollback"
-    exit 1
+LOCK_PID="$(cat "$LOCK_DIR/pid" 2>/dev/null)"
+if [ "${DEPLOY_LOCK_HELD:-0}" != "1" ] && [ "$LOCK_PID" != "$PPID" ]; then
+  if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    # stale if: pid file empty (crashed between mkdir and pid write) OR pid is a dead process
+    if [ ! -s "$LOCK_DIR/pid" ] || { [ -n "$LOCK_PID" ] && ! kill -0 "$LOCK_PID" 2>/dev/null; }; then
+      rm -rf "$LOCK_DIR"
+      mkdir "$LOCK_DIR" 2>/dev/null || { echo "❌ A deploy is running — wait, then retry rollback"; exit 1; }
+    else
+      echo "❌ A deploy is currently running — wait for it to finish, then retry rollback"
+      exit 1
+    fi
   fi
+  echo $$ > "$LOCK_DIR/pid" 2>/dev/null
+  trap 'rm -rf "$LOCK_DIR" 2>/dev/null' EXIT
 fi
-echo $$ > "$LOCK_DIR/pid" 2>/dev/null
-trap 'rm -rf "$LOCK_DIR" 2>/dev/null' EXIT
 
 if [ -z "$TARGET_SHA" ]; then
   echo "❌ Target SHA not found — provide a commit SHA"
@@ -106,5 +153,10 @@ case "$RESTART_METHOD" in
               fi ;;
   ""|none)    : ;;
 esac
+
+echo "$TARGET_SHA" > "$WORKSPACE/.deployed_sha" 2>/dev/null || true
+
+notify "⏪ <b>Rollback completed</b> ($SITE_DOMAIN · $BRANCH)
+Rolled back to <code>${TARGET_SHA:0:10}</code> + restarted" "Rollback Successful: $SITE_DOMAIN ($BRANCH)"
 
 echo "✅ Rolled back to $TARGET_SHA + restarted"

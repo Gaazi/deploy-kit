@@ -41,18 +41,22 @@ DB_USER=""
 DB_PASS=""
 DB_NAME=""
 
-# ── Notifications (optional) ────────────────────────────────
-TELEGRAM_BOT_TOKEN=""
-TELEGRAM_CHAT_ID=""
+# ── Notifications (optional — multi-channel alerts) ───────────
+TELEGRAM_BOT_TOKEN=""                 # Telegram bot token from @BotFather
+TELEGRAM_CHAT_ID=""                   # Telegram chat ID
+DISCORD_WEBHOOK_URL=""                # Discord channel webhook URL ("" = skip)
+SLACK_WEBHOOK_URL=""                  # Slack incoming webhook URL ("" = skip)
+ALERT_EMAIL=""                        # Notification email address ("" = skip)
 
 # ── Webhook trigger (optional, VPS only) ────────────────────
 DEPLOY_WEBHOOK_SECRET=""              # "" = webhook disabled. Set a random string & match in GitHub secrets
 WEBHOOK_PORT="9000"                   # listener port (webhook.sh start)
 
-# ── Health check (optional — "" = skip) ─────────────────────
+# ── Health check & Safety (optional — "" = skip) ────────────
 HEALTH_URL=""                         # e.g. https://your-domain.com/health — "" to skip
 HEALTH_WAIT="8"                       # seconds to wait after restart before checking
 HEALTH_RETRY="3"                      # how many times to retry (app may need a moment)
+AUTO_ROLLBACK_ON_FAIL="no"            # yes | no — auto-rollback to previous commit if health check fails
 
 # ── Git ─────────────────────────────────────────────────────
 DEPLOY_KEY=""                         # path to SSH deploy key ("" = use default ssh)

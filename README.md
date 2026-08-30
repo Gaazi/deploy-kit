@@ -40,24 +40,26 @@ Runner kuch aur nahi karta — na checkout, na build, na migrate. Sab kam resour
 
 ---
 
-## 📁 Files (17 + .agents/)
+## 📁 Files (18 + .agents/)
 
 | File | What it does |
 |------|---------------|
 | `config.example.sh` | **Settings template** — create `config.sh` and fill in your values |
 | `setup.sh` | **Beginner setup wizard** — YES/NO questions, press Enter for recommended, creates config.sh itself |
 | `setup-quick.sh` | **Paste setup** — paste all your values at once, no questions |
+| `doctor.sh` | **Preflight doctor** — diagnose server environment, tools, permissions, and config |
 | `keygen.sh` | **SSH key helper** — creates the key + prints 3 ready-to-copy blocks for GitHub (~2 min) |
 | `detect.sh` | **Fully dynamic** — reads your repo and auto-sets APP_TYPE / build / migrate / restart by itself |
 | `cron.sh` | **Zero GitHub Actions** — one command installs a cron job: deploy every N min, 0 Actions minutes |
 | `runner.sh` | **~6s deploys (VPS)** — installs a self-hosted GitHub runner on the server: no VM boot, 0 Actions minutes |
 | `webhook.sh` | **~1-2s deploys (VPS)** — HTTP listener: GitHub POST → auto_deploy.sh, 0 Actions minutes |
-| `auto_deploy.sh` | Deploy script — git → rsync → build → backup → migrate → restart → health → telegram |
+| `auto_deploy.sh` | Deploy script — git → rsync → build → backup → migrate → restart → health → notifications |
 | `rollback.sh` | Go back to the previous commit + DB restore |
 | `test.sh` | **Self-test** — syntax check + full local deploy/rollback test (no network) |
 | `.github/workflows/deploy.yml.example` | GitHub Actions trigger (hosted runner, ~1 min) |
 | `.github/workflows/deploy-selfhosted.yml.example` | GitHub Actions trigger (self-hosted runner, ~6s) |
 | `.github/workflows/deploy-webhook.yml.example` | GitHub Actions trigger (webhook, ~1-2s) |
+| `.github/workflows/test.yml` | CI self-test (runs test.sh on push/PR) |
 | `README.md` | This guide |
 | `AGENTS.md` + `.agents/` | Agent rules + memory (for AI agents / future developers) |
 | `LICENSE` | MIT License — for a public repo |
@@ -127,11 +129,15 @@ nano config.sh
 | `DB_TYPE` / `DB_HOST` / `DB_USER` / `DB_PASS` / `DB_NAME` | Server DB panel (sqlite: `DB_NAME` = file path in app folder) | DB details | `mysql` / `localhost` / user / pass / name |
 | `TELEGRAM_BOT_TOKEN` | From @BotFather (optional) | Token | `123:ABC...` |
 | `TELEGRAM_CHAT_ID` | Message from the bot on Telegram (optional) | Chat ID | `-100123...` |
+| `DISCORD_WEBHOOK_URL` | Discord channel webhook URL (optional) | URL | `https://discord.com/api/webhooks/...` |
+| `SLACK_WEBHOOK_URL` | Slack incoming webhook URL (optional) | URL | `https://hooks.slack.com/services/...` |
+| `ALERT_EMAIL` | Email address for deploy/failure alerts | Email | `alerts@myapp.com` |
 | `DEPLOY_WEBHOOK_SECRET` | Webhook trigger (VPS only) — random string, match in GitHub secrets | `""` = disabled | `abc...` |
 | `WEBHOOK_PORT` | Webhook listener port | Number | `9000` |
 | `HEALTH_URL` | Health check URL (optional) | Full URL | `https://myapp.com/health` |
 | `HEALTH_WAIT` | Seconds to wait after restart before checking | Number | `8` |
 | `HEALTH_RETRY` | How many times to retry health check | Number | `3` |
+| `AUTO_ROLLBACK_ON_FAIL` | Auto-rollback if health check fails | yes/no | `yes` |
 | `DEPLOY_KEY` | Path to the GitHub deploy key | Key file | `/home/cpuser/.ssh/deploy_key` |
 | `WORKSPACE_BASE` | Where the git workspace lives | Path | `/home/cpuser/deploy-workspace` |
 | `TOGGLE_FLAG` / `SKIP_WHEN_FLAG` | Toggle system (optional) | Flag path + `1` | — |
@@ -140,7 +146,7 @@ nano config.sh
 | `RSYNC_EXCLUDES` | Extra rsync excludes (space-separated) | `uploads/` | — |
 
 **Rule:** Anything that is **not** in your project → leave it as `""` (empty). The script will skip it automatically.
-**Only 2 are required:** `REPO_URL` + `APP_DIR`. Everything else is **optional** — backup, build, migrate, restart, health check, Telegram, toggle — whatever is empty gets skipped.
+**Only 2 are required:** `REPO_URL` + `APP_DIR`. Everything else is **optional** — backup, build, migrate, restart, health check, Telegram, Discord, Email, toggle — whatever is empty gets skipped.
 
 #### 🧰 Every stack — what to put in config (cheat sheet)
 
@@ -159,10 +165,13 @@ nano config.sh
 > `BUILD_CMD` runs before the app starts — anything can go there (deps install, compile, collectstatic...).
 > Monorepo? Set `APP_SUBDIR="web/"` to deploy only that folder. Database SQLite? `DB_TYPE=sqlite` + `DB_NAME=path/to/app.db`.
 
-### Step 3: Permissions + Test
+### Step 3: Diagnostics + Permissions + Test
 
 ```bash
-chmod +x auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh detect.sh cron.sh test.sh
+chmod +x auto_deploy.sh rollback.sh setup.sh setup-quick.sh doctor.sh keygen.sh detect.sh cron.sh test.sh
+
+# Run system doctor (checks tools, permissions, config before first deploy):
+/bin/bash doctor.sh
 
 # Optional — verify the kit itself (syntax + full local deploy test, no network):
 /bin/bash test.sh
