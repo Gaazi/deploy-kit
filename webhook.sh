@@ -36,7 +36,7 @@ start() {
     echo "✅ Webhook listener already running (pid $(cat "$PIDFILE"))"
     exit 0
   fi
-  nohup socat TCP-LISTEN:"$PORT",fork,reuseaddr \
+  nohup socat TCP-LISTEN:"$PORT",fork,reuseaddr,max-children=10 \
     EXEC:"$SCRIPT_DIR/webhook.sh handler",setsid,stderr >> "$LOG" 2>&1 &
   echo $! > "$PIDFILE"
   echo "✅ Webhook listener started on port $PORT (pid $!)"
@@ -69,18 +69,21 @@ handler() {
   while read -r line; do
     line="${line%$'\r'}"
     [ -z "$line" ] && break
-    case "$line" in
-      X-Deploy-Secret:*)    SECRET_HEADER="${line#*: }" ;;
-      X-Hub-Signature-256:*) HUB_SIG="${line#*: }" ;;
-      Content-Length:*)     LEN="${line#*: }" ;;
+    # lowercase header name for case-insensitive matching (RFC 7230)
+    lc_line="$(printf '%s' "$line" | tr '[:upper:]' '[:lower:]')"
+    case "$lc_line" in
+      x-deploy-secret:*)     SECRET_HEADER="${line#*: }" ;;
+      x-hub-signature-256:*) HUB_SIG="${line#*: }" ;;
+      content-length:*)      LEN="${line#*: }" ;;
     esac
   done
   BODY=""
   [ "$LEN" -gt 0 ] 2>/dev/null && BODY="$(dd bs=1 count="$LEN" 2>/dev/null)"
   # extract branch: try our format first, then native GitHub webhook ref
-  BRANCH="$(printf '%s' "$BODY" | sed -n 's/.*"branch"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+  # use grep -o to avoid greedy .* matching wrong "ref" in minified JSON
+  BRANCH="$(printf '%s' "$BODY" | grep -o '"branch"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"branch"[[:space:]]*:[[:space:]]*"//;s/"//')"
   if [ -z "$BRANCH" ]; then
-    BRANCH="$(printf '%s' "$BODY" | sed -n 's/.*"ref"[[:space:]]*:[[:space:]]*"refs\/heads\/\([^"]*\)".*/\1/p')"
+    BRANCH="$(printf '%s' "$BODY" | grep -o '"ref"[[:space:]]*:[[:space:]]*"refs/heads/[^"]*"' | head -1 | sed 's/.*refs\/heads\///;s/"//')"
   fi
   # verify: native GitHub webhook (HMAC) OR our custom header OR nothing
   AUTHORIZED=0

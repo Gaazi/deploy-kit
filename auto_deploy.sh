@@ -115,12 +115,12 @@ echo $$ > "$LOCK_DIR/pid" 2>/dev/null
 trap 'rm -rf "$LOCK_DIR" 2>/dev/null' EXIT
 
 # ── 1. Git workspace ────────────────────────────────────────
+# --single-branch: only this branch's history — minimum network + disk
 if [ ! -d "$WORKSPACE/.git" ]; then
-  GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i $DEPLOY_KEY -o StrictHostKeyChecking=no}" \
-    # --single-branch: only this branch's history — minimum network + disk
+  GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i \"$DEPLOY_KEY\" -o StrictHostKeyChecking=no}" \
     git clone --single-branch --branch "$BRANCH" "$REPO_URL" "$WORKSPACE" >> "$LOG" 2>&1
 else
-  GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i $DEPLOY_KEY -o StrictHostKeyChecking=no}" \
+  GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i \"$DEPLOY_KEY\" -o StrictHostKeyChecking=no}" \
     git -C "$WORKSPACE" fetch origin "$BRANCH" >> "$LOG" 2>&1
 fi
 

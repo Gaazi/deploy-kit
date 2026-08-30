@@ -101,6 +101,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 | `.github/workflows/test.yml` | CI self-test (runs test.sh on push/PR) |
 | `README.md` | User guide (quickstart + 3 setup methods, config table, checklist) |
 | `.gitignore` | Protects `config.sh` / secrets |
+| `AGENTS.md` | Project agent rules (this file) |
 | `LICENSE` | MIT |
 
 ---

@@ -43,6 +43,10 @@ fi
 if grep -qF "$(cat "$KEY.pub" 2>/dev/null)" "$HOME/.ssh/authorized_keys" 2>/dev/null; then
   echo "✅ Public key already authorized in ~/.ssh/authorized_keys"
 else
+  # ensure trailing newline so new key doesn't merge into last existing line
+  if [ -f "$HOME/.ssh/authorized_keys" ] && [ -s "$HOME/.ssh/authorized_keys" ]; then
+    tail -c1 "$HOME/.ssh/authorized_keys" | read -r _ || echo "" >> "$HOME/.ssh/authorized_keys"
+  fi
   if cat "$KEY.pub" >> "$HOME/.ssh/authorized_keys" 2>/dev/null; then
     chmod 600 "$HOME/.ssh/authorized_keys" 2>/dev/null
     echo "✅ Public key authorized in ~/.ssh/authorized_keys"

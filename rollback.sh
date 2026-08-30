@@ -90,7 +90,7 @@ fi
 echo "⏪ Rolling back $BRANCH to $TARGET_SHA"
 echo "$(date '+%F %T'): Rollback $BRANCH to $TARGET_SHA" >> "$LOG"
 
-GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i $DEPLOY_KEY -o StrictHostKeyChecking=no}" \
+GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i \"$DEPLOY_KEY\" -o StrictHostKeyChecking=no}" \
   git -C "$WORKSPACE" fetch origin "$BRANCH" >> "$LOG" 2>&1
 
 # Safety guard: the target SHA must exist locally before we touch the app dir.

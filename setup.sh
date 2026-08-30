@@ -133,7 +133,8 @@ fi
 HEALTH_URL=""
 AUTO_ROLLBACK_ON_FAIL="no"
 if yesno "Do you want a health check after deploy? (recommended)" yes; then
-  HEALTH_URL=$(ask "Health URL (Enter = https://$SITE_DOMAIN/)" "")
+  HEALTH_DEFAULT="https://${SITE_DOMAIN:-localhost}/"
+  HEALTH_URL=$(ask "Health URL (Enter = $HEALTH_DEFAULT)" "$HEALTH_DEFAULT")
   if yesno "Auto-rollback to previous version if health check fails?" no; then
     AUTO_ROLLBACK_ON_FAIL="yes"
   fi

@@ -26,14 +26,14 @@ WORKSPACE_BASE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}"
 WORKSPACE="$WORKSPACE_BASE/$BRANCH"
 
 # ── 1. Get the code (clone or update workspace) ─────────────
+# --single-branch: only this branch's history — minimum network + disk
 if [ ! -d "$WORKSPACE/.git" ]; then
   echo "📦 Cloning repo (first time)..."
-  GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i $DEPLOY_KEY -o StrictHostKeyChecking=no}" \
-    # --single-branch: only this branch's history — minimum network + disk
-    git clone --single-branch --branch "$BRANCH" "$REPO_URL" "$WORKSPACE" >/dev/null 2>&1 \
+  GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i \"$DEPLOY_KEY\" -o StrictHostKeyChecking=no}" \
+    git clone --single-branch --branch "$BRANCH" -- "$REPO_URL" "$WORKSPACE" >/dev/null 2>&1 \
     || { echo "❌ Could not clone $REPO_URL — check REPO_URL + run keygen.sh"; exit 1; }
 else
-  GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i $DEPLOY_KEY -o StrictHostKeyChecking=no}" \
+  GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i \"$DEPLOY_KEY\" -o StrictHostKeyChecking=no}" \
     git -C "$WORKSPACE" fetch origin "$BRANCH" >/dev/null 2>&1
   git -C "$WORKSPACE" checkout "$BRANCH" >/dev/null 2>&1
   git -C "$WORKSPACE" reset --hard "origin/$BRANCH" >/dev/null 2>&1

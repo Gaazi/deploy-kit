@@ -129,12 +129,11 @@ else
 fi
 
 if [ -n "$REPO_URL" ]; then
-  GIT_CMD="git ls-remote --heads $REPO_URL"
   if [ -n "$DEPLOY_KEY" ] && [ -f "$DEPLOY_KEY" ]; then
-    GIT_SSH_COMMAND="ssh -i $DEPLOY_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=8"
+    GIT_SSH_COMMAND="ssh -i \"$DEPLOY_KEY\" -o StrictHostKeyChecking=no -o ConnectTimeout=8"
     export GIT_SSH_COMMAND
   fi
-  if $GIT_CMD >/dev/null 2>&1; then
+  if git ls-remote --heads "$REPO_URL" >/dev/null 2>&1; then
     ok "Git remote repository is accessible ($REPO_URL)"
   else
     warn "Could not reach remote repo (check SSH key in GitHub or network access)"
