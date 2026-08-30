@@ -78,7 +78,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 
 ---
 
-## File Structure (19 files + .agents/)
+## File Structure (21 files + .agents/)
 
 | File | Purpose |
 |------|---------|

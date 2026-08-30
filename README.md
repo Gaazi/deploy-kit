@@ -59,7 +59,7 @@ Runner kuch aur nahi karta — na checkout, na build, na migrate. Sab kam resour
 
 ---
 
-## 📁 Files (19 + .agents/)
+## 📁 Files (21 + .agents/)
 
 | File | What it does |
 |------|---------------|
@@ -475,7 +475,7 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (17 files)
+- [ ] `~/deploy-kit/` on the server (21 files)
 - [ ] Created `config.sh` (wizard: `/bin/bash setup.sh`)
 - [ ] `chmod +x *.sh`
 - [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅
