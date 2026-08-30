@@ -45,11 +45,14 @@
 
 Backup behavior: dumps to `$APP_DIR/backups/predeploy/`, keeps `DB_BACKUP_KEEP` (default 7), `--single-transaction` for mysql. sqlite = copy of the `.db` file.
 
-## Notifications (optional)
+## Notifications (optional — multi-channel alerts)
 | Key | What |
 |-----|------|
 | `TELEGRAM_BOT_TOKEN` | @BotFather token — `""` = no alerts |
 | `TELEGRAM_CHAT_ID` | Chat ID — `""` = no alerts |
+| `DISCORD_WEBHOOK_URL` | Discord webhook URL — `""` = no alerts |
+| `SLACK_WEBHOOK_URL` | Slack incoming webhook URL — `""` = no alerts |
+| `ALERT_EMAIL` | Email address for alerts (uses `mail`/`sendmail`) — `""` = no alerts |
 
 ## Webhook trigger (optional, VPS only)
 | Key | What | Default |
@@ -59,12 +62,13 @@ Backup behavior: dumps to `$APP_DIR/backups/predeploy/`, keeps `DB_BACKUP_KEEP` 
 
 Webhook listener: `webhook.sh start|stop|status`. Needs socat (VPS only).
 
-## Health check (optional)
+## Health check & Safety (optional)
 | Key | What |
 |-----|------|
 | `HEALTH_URL` | Full URL to check after deploy — `""` = skip. Default fallback `https://$SITE_DOMAIN/`. Uses `curl -m 15` (never hangs). |
 | `HEALTH_WAIT` | Seconds to sleep after restart before checking — `""` = 8. |
 | `HEALTH_RETRY` | How many times to retry health check (app may need a moment) — `""` = 3. |
+| `AUTO_ROLLBACK_ON_FAIL` | `yes` \| `no` — automatically rollback to previous working commit if health check fails |
 
 ## Git / Advanced (optional)
 | Key | What | Default |

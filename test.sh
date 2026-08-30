@@ -20,7 +20,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 echo "== 1. Syntax check (bash -n) =="
-for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh cron.sh detect.sh runner.sh webhook.sh; do
+for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh cron.sh detect.sh runner.sh webhook.sh doctor.sh; do
   if bash -n "$f" 2>/dev/null; then ok "bash -n $f"; else bad "bash -n $f"; fi
 done
 
@@ -317,6 +317,90 @@ if command -v openssl >/dev/null 2>&1; then
 else
   echo "  ⏭️ openssl not available — skipping native webhook test"
 fi
+
+echo "== 13. doctor.sh (preflight environment & config diagnostics) =="
+mkdir -p "$TMP/doctor-kit"
+cp doctor.sh "$TMP/doctor-kit/"
+# test missing config returns error
+(cd "$TMP/doctor-kit" && bash doctor.sh "$TMP/nonexistent.sh" >/dev/null 2>&1)
+[ $? -ne 0 ] && ok "doctor: missing config returns failure" || bad "doctor: missing config returns failure"
+
+# test valid config returns success
+cat > "$TMP/doctor-kit/config.sh" <<CFG
+SERVER_USER="$(whoami)"
+REPO_URL="file://$BARE"
+APP_DIR="$TMP/doctor-app"
+WORKSPACE_BASE="$TMP/doctor-ws"
+LOG_FILE="$TMP/doctor.log"
+CFG
+chmod 600 "$TMP/doctor-kit/config.sh"
+DOCTOR_OUT="$(cd "$TMP/doctor-kit" && bash doctor.sh 2>&1)"
+echo "$DOCTOR_OUT" | grep -q "All critical checks passed" && ok "doctor: valid config passes" || bad "doctor: valid config passes"
+
+echo "== 14. auto-rollback on health check failure =="
+HSRC="$TMP/hsrc"; mkdir -p "$HSRC"
+echo "initial-version-content" > "$HSRC/index.html"
+git init -q "$HSRC" && git -C "$HSRC" symbolic-ref HEAD refs/heads/main
+git -C "$HSRC" add -A
+git -C "$HSRC" -c user.email=test@test -c user.name=test commit -qm "hc1"
+HBARE="$TMP/hrepo.git"; git init -q --bare "$HBARE"
+git -C "$HSRC" remote add origin "$HBARE"
+git -C "$HSRC" push -q origin main
+
+mkdir -p "$TMP/health-kit"
+cp auto_deploy.sh rollback.sh "$TMP/health-kit/"
+HEALTH_APP="$TMP/health-app"
+HEALTH_WS="$TMP/health-ws"
+cat > "$TMP/health-kit/config.sh" <<CFG
+REPO_URL="file://$HBARE"
+APP_DIR="$HEALTH_APP"
+WORKSPACE_BASE="$HEALTH_WS"
+LOG_FILE="$TMP/health-deploy.log"
+HEALTH_URL=""
+AUTO_ROLLBACK_ON_FAIL="yes"
+CFG
+# 1. Deploy initial version (healthy)
+(cd "$TMP/health-kit" && bash auto_deploy.sh main >/dev/null 2>&1)
+
+# 2. Push broken version
+sleep 1
+echo "broken-version-content" > "$HSRC/index.html"
+git -C "$HSRC" add -A
+git -C "$HSRC" -c user.email=test@test -c user.name=test commit -qm "hc2"
+git -C "$HSRC" push -q origin main
+
+# 3. Configure health check failure for broken version
+cat >> "$TMP/health-kit/config.sh" <<CFG
+HEALTH_URL="http://127.0.0.1:59998/nonexistent-endpoint"
+HEALTH_WAIT="0"
+HEALTH_RETRY="1"
+CFG
+
+# Deploy broken version with health check failure → auto-rollback should restore initial version
+(cd "$TMP/health-kit" && bash auto_deploy.sh main >/dev/null 2>&1)
+if [ -f "$HEALTH_APP/index.html" ] && grep -q "initial-version-content" "$HEALTH_APP/index.html"; then
+  ok "auto-rollback restored initial version after health failure"
+else
+  bad "auto-rollback restored initial version after health failure"
+fi
+
+echo "== 15. multi-channel notifications (Telegram, Discord, Slack, Email) =="
+mkdir -p "$TMP/notif-kit"
+cp auto_deploy.sh rollback.sh "$TMP/notif-kit/"
+cat > "$TMP/notif-kit/config.sh" <<CFG
+REPO_URL="file://$BARE"
+APP_DIR="$TMP/notif-app"
+WORKSPACE_BASE="$TMP/notif-ws"
+LOG_FILE="$TMP/notif.log"
+TELEGRAM_BOT_TOKEN="mock_token"
+TELEGRAM_CHAT_ID="mock_chat"
+DISCORD_WEBHOOK_URL="http://127.0.0.1:59997/mock-discord"
+SLACK_WEBHOOK_URL="http://127.0.0.1:59997/mock-slack"
+ALERT_EMAIL="mock@example.com"
+CFG
+# Run deploy with all mock notification channels set — must complete cleanly without crash
+(cd "$TMP/notif-kit" && bash auto_deploy.sh main >/dev/null 2>&1)
+[ -f "$TMP/notif-app/index.html" ] && ok "multi-channel notify: deploy completed cleanly" || bad "multi-channel notify: deploy completed cleanly"
 
 echo ""
 echo "============================================="

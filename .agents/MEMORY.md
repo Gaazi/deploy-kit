@@ -11,15 +11,16 @@
 - **Resource budget (GitHub):** hosted ~1 min/deploy · native webhook 0 · cron 0 · self-hosted 0 · docs push 0 (paths-ignore)
 - **Resource budget (server):** `--single-branch` clone · SHA-skip instant · log 1MB rotation · DB_BACKUP_KEEP · deploy lock · optional steps only when configured
 - **Required config:** only `REPO_URL` + `APP_DIR`. Everything else optional — empty = skip, never crash.
-- **Test:** `/bin/bash test.sh` — 37 checks, run before committing. CI runs it on every push to main.
-- **Deploy flow:** git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health → Telegram
+- **Test:** `/bin/bash test.sh` — 42 checks, run before committing. CI runs it on every push to main.
+- **Deploy flow:** git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health → notifications (Telegram/Discord/Slack/Email)
 
 ## File map (what each script does)
 
 | File | Role |
 |------|------|
-| `auto_deploy.sh` | The deploy — fetch → rsync → optional steps → health → telegram |
+| `auto_deploy.sh` | The deploy — fetch → rsync → optional steps → health → notifications |
 | `rollback.sh` | Roll back to previous commit + optional DB restore |
+| `doctor.sh` | Preflight check — diagnose server environment, config, tools, and permissions |
 | `setup.sh` | Beginner YES/NO wizard → creates config.sh (auto-runs keygen at end) |
 | `setup-quick.sh` | Paste `KEY=VALUE` lines, Ctrl+D → config.sh |
 | `keygen.sh` | SSH key (one pair, both ways) + 3 GitHub copy-paste blocks |
@@ -33,9 +34,9 @@
 
 - **Required:** `REPO_URL`, `APP_DIR`
 - **Server:** SERVER_USER, SERVER_HOST, SSH_PORT
-- **App/Stack:** APP_TYPE, PYTHON_BIN, NODE_BIN, BUILD_CMD, MIGRATE_CMD, RESTART_METHOD, SERVICE_NAME, PM2_APP, SUPERVISOR_APP, WSGI_FILE, DOCKER_COMPOSE, PHP_FPM_SERVICE, APP_SUBDIR, HEALTH_URL, HEALTH_WAIT, HEALTH_RETRY
+- **App/Stack:** APP_TYPE, PYTHON_BIN, NODE_BIN, BUILD_CMD, MIGRATE_CMD, RESTART_METHOD, SERVICE_NAME, PM2_APP, SUPERVISOR_APP, WSGI_FILE, DOCKER_COMPOSE, PHP_FPM_SERVICE, APP_SUBDIR, HEALTH_URL, HEALTH_WAIT, HEALTH_RETRY, AUTO_ROLLBACK_ON_FAIL
 - **DB:** DB_BACKUP, DB_BACKUP_KEEP, DB_TYPE, DB_HOST, DB_USER, DB_PASS, DB_NAME
-- **Notify:** TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+- **Notify:** TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, DISCORD_WEBHOOK_URL, SLACK_WEBHOOK_URL, ALERT_EMAIL
 - **Webhook (VPS):** DEPLOY_WEBHOOK_SECRET, WEBHOOK_PORT
 - **Git/Advanced:** DEPLOY_KEY, WORKSPACE_BASE, TOGGLE_FLAG, SKIP_WHEN_FLAG, DEFAULT_BRANCH, LOG_FILE, RSYNC_EXCLUDES
 
@@ -73,6 +74,7 @@
 
 ## History (latest first)
 
+- **Doctor & Multi-Channel Alerts (NEW):** Added `doctor.sh` preflight system diagnostic check. Added multi-channel notification support in `auto_deploy.sh` and `rollback.sh` (Telegram, Discord webhook, Slack webhook, and Email alerts). Enhanced notifications with commit author, commit message, and deploy duration timer. Added `AUTO_ROLLBACK_ON_FAIL` auto-rollback if health check fails. Test suite upgraded to 42 checks.
 - **Resource principle:** runner trigger only, server all work; `--single-branch` clone; documented in AGENTS.md + README + references
 - **Trigger choice:** hosted / self-hosted (`runner.sh`) / webhook (`webhook.sh`) / cron — README "Choose your trigger" table
 - **Webhook mode (NEW):** `webhook.sh` (socat HTTP listener, VPS only, start/stop/status) + `deploy-webhook.yml.example` + `DEPLOY_WEBHOOK_SECRET`/`WEBHOOK_PORT` keys — ~1-2s deploys, 0 Actions minutes. Supports BOTH native GitHub webhook (Settings → Webhooks, HMAC `X-Hub-Signature-256` verified, branch from `refs/heads/...`) AND custom `X-Deploy-Secret` header. Native = 0 runner at all.

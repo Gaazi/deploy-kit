@@ -78,12 +78,13 @@ When you modify the kit, this table tells you which files to update. Anything no
 
 ---
 
-## File Structure (17 files + .agents/)
+## File Structure (18 files + .agents/)
 
 | File | Purpose |
 |------|---------|
-| `auto_deploy.sh` | Main deploy script — git → rsync → optional steps → health → telegram |
+| `auto_deploy.sh` | Main deploy script — git → rsync → optional steps → health → notifications |
 | `rollback.sh` | Roll back to previous commit + optional DB restore |
+| `doctor.sh` | **Preflight check** — diagnose server environment, config, tools, and permissions |
 | `setup.sh` | Beginner YES/NO setup wizard (Enter = recommended, creates config.sh, auto-runs keygen.sh at end) |
 | `setup-quick.sh` | Paste setup (KEY=VALUE lines, Ctrl+D, no questions) |
 | `keygen.sh` | SSH key helper — one key pair both ways + 3 copy-paste blocks for GitHub |
@@ -96,6 +97,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 | `.github/workflows/deploy.yml.example` | GitHub Actions trigger (hosted runner, ~1 min) |
 | `.github/workflows/deploy-selfhosted.yml.example` | GitHub Actions trigger (self-hosted runner, ~6s) |
 | `.github/workflows/deploy-webhook.yml.example` | GitHub Actions trigger (webhook, ~1-2s) |
+| `.github/workflows/test.yml` | CI self-test (runs test.sh on push/PR) |
 | `README.md` | User guide (3 setup methods, config table, checklist) |
 | `.gitignore` | Protects `config.sh` / secrets |
 | `LICENSE` | MIT |
