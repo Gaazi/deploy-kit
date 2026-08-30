@@ -78,10 +78,11 @@ When you modify the kit, this table tells you which files to update. Anything no
 
 ---
 
-## File Structure (18 files + .agents/)
+## File Structure (19 files + .agents/)
 
 | File | Purpose |
 |------|---------|
+| `quickstart.sh` | **1 command — sab kuch** (setup + keygen + detect + test) |
 | `auto_deploy.sh` | Main deploy script — git → rsync → optional steps → health → notifications |
 | `rollback.sh` | Roll back to previous commit + optional DB restore |
 | `doctor.sh` | **Preflight check** — diagnose server environment, config, tools, and permissions |
@@ -98,7 +99,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 | `.github/workflows/deploy-selfhosted.yml.example` | GitHub Actions trigger (self-hosted runner, ~6s) |
 | `.github/workflows/deploy-webhook.yml.example` | GitHub Actions trigger (webhook, ~1-2s) |
 | `.github/workflows/test.yml` | CI self-test (runs test.sh on push/PR) |
-| `README.md` | User guide (3 setup methods, config table, checklist) |
+| `README.md` | User guide (quickstart + 3 setup methods, config table, checklist) |
 | `.gitignore` | Protects `config.sh` / secrets |
 | `LICENSE` | MIT |
 

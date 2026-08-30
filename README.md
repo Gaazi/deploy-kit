@@ -5,6 +5,25 @@
 
 ---
 
+## ⚡ Quickstart (1 command — kuch padhne ki zaroorat nahi)
+
+```bash
+# Server pe ~/deploy-kit/ mein:
+/bin/bash quickstart.sh
+```
+
+Yeh ek hi command sab karta hai:
+1. **setup** → config.sh ban jata hai (Enter dabao = recommended)
+2. **keygen** → SSH keys + GitHub copy-paste blocks
+3. **detect** → project khud pehchanta hai
+4. **test** → kit khud ko verify karta hai
+
+Phir bas GitHub pe workflow copy + push. **Done — 5 min.**
+
+> Neeche sab detail mein hai — sirf zaroorat par padho.
+
+---
+
 ## 📌 What this kit does
 
 ```
@@ -40,10 +59,11 @@ Runner kuch aur nahi karta — na checkout, na build, na migrate. Sab kam resour
 
 ---
 
-## 📁 Files (18 + .agents/)
+## 📁 Files (19 + .agents/)
 
 | File | What it does |
 |------|---------------|
+| `quickstart.sh` | ⚡ **1 command — sab kuch** (setup + keygen + detect + test) |
 | `config.example.sh` | **Settings template** — create `config.sh` and fill in your values |
 | `setup.sh` | **Beginner setup wizard** — YES/NO questions, press Enter for recommended, creates config.sh itself |
 | `setup-quick.sh` | **Paste setup** — paste all your values at once, no questions |
