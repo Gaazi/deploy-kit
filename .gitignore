@@ -1,4 +1,24 @@
-# Deploy Kit — never commit secrets
+# Deploy Kit — never commit secrets or local state
+# Secrets (live only on the server, never in git)
 config.sh
 *.env
+.env
+.env.*
 deploy_key*
+*.key
+*.pem
+
+# Deploy runtime state (generated on the server)
+.deployed_sha
+.failed_sha
+deploy-workspace/
+
+# Logs / backups / temp
+*.log
+*.bak
+*.tmp
+backups/
+
+# OS
+.DS_Store
+Thumbs.db
