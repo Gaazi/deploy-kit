@@ -176,6 +176,7 @@ nano config.sh
 | `DEPLOY_KEY` | Path to the GitHub deploy key | Key file | `/home/cpuser/.ssh/deploy_key` |
 | `WORKSPACE_BASE` | Where the git workspace lives | Path | `/home/cpuser/deploy-workspace` |
 | `TOGGLE_FLAG` / `SKIP_WHEN_FLAG` | Toggle system (optional) | Flag path + `1` | — |
+| `KIT_SELF_UPDATE` | `yes` = auto-pull kit updates from its own git repo (if cloned; `config.sh` is gitignored, never touched) | yes/no | `""` |
 | `DEFAULT_BRANCH` | Default deploy branch | Branch | `main` |
 | `LOG_FILE` | Where to log | Path | `/home/cpuser/deploy.log` |
 | `RSYNC_EXCLUDES` | Extra rsync excludes (space-separated) | `uploads/` | — |
