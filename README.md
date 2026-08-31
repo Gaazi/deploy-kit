@@ -488,6 +488,42 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 | "Build FAILED" / "Migrate FAILED" | Build/migrate command error | Check the log, fix, push again; run `rollback.sh` if the site broke |
 | "No such file or directory" in `~/deploy.log` | Workflow tries to run `auto_deploy.sh` from wrong path | Set `SERVER_DEPLOY_PATH` GitHub Secret to the correct path on your server |
 
+## ✅ How to verify a deploy actually worked
+
+**GitHub Actions green check** only means the trigger ran (~6s). It does NOT mean the deploy succeeded.
+
+### 1. Server log (full detail)
+
+```bash
+tail -50 ~/deploy.log
+```
+
+You should see:
+```
+🚀 Deploy started (mydomain.com · main)
+✅ Deploy successful (mydomain.com · main) — health OK
+```
+
+If you see `No such file or directory`, the `SERVER_DEPLOY_PATH` secret is wrong.
+
+### 2. The site (quick)
+
+```bash
+# Health endpoint (if configured)
+curl -s https://yoursite.com/health
+
+# Or just the page status
+curl -s -o /dev/null -w "%{http_code}" https://yoursite.com/
+```
+
+### 3. The deployed commit
+
+```bash
+cat ~/deploy-kit/deploy-workspace/.deployed_sha
+```
+
+Compare it with the latest commit on GitHub — if they match, the deploy went through.
+
 ---
 
 ## 🛡️ Safety Notes
