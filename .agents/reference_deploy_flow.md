@@ -89,7 +89,7 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 - No checkout (fastest); SSH with private key from secrets; `BatchMode=yes`; `ConnectTimeout=10`
 - Fire-and-forget: `nohup ... &` — run completes in ~6s, deploy continues on server
 - GitHub Secrets needed: `SERVER_HOST`, `SERVER_USER`, `SSH_PORT`, `SSH_PRIVATE_KEY`, `SERVER_DEPLOY_PATH` (optional)
-- **`keygen.sh` prints all 4 secret values + the Deploy key — pure copy-paste, no manual key work**
+- **`keygen.sh` prints all 5 secret values + the Deploy key — pure copy-paste, no manual key work**
 - **`SERVER_DEPLOY_PATH`** — full path to `auto_deploy.sh` on the server. Default (if unset): `~/deploy-kit/auto_deploy.sh`. If your kit lives elsewhere (e.g. `~/lq_auto_deploy.sh`), set this secret — otherwise the workflow fails with "No such file or directory" in the server log. Used by deploy.yml + deploy-selfhosted.yml.
 
 ## Zero GitHub Actions (cron.sh) — optional, free-plan friendly

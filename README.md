@@ -257,7 +257,7 @@ That's it — one key pair works both ways (server → GitHub clone + GitHub →
 
 | File | When to use | Extra setup needed? |
 |------|--------------|---------------------|
-| **`deploy.yml.example`** ✅ | **MOST USERS** — GitHub's free hosted runner (2000 min/mo) | only 4 Secrets |
+| **`deploy.yml.example`** ✅ | **MOST USERS** — GitHub's free hosted runner (2000 min/mo) | only 5 Secrets |
 | `deploy-selfhosted.yml.example` | only if you ran `runner.sh` on a VPS | runner.sh (VPS) |
 | `deploy-webhook.yml.example` | only if you ran `webhook.sh start` on a VPS | webhook.sh (VPS) |
 
@@ -329,7 +329,7 @@ TELEGRAM_BOT_TOKEN=""  # leave empty → no alerts
 # in your PROJECT repo (myapp):
 mkdir -p .github/workflows
 cp ~/deploy-kit/.github/workflows/deploy.yml.example .github/workflows/deploy.yml
-# edit branch names (dev/demo/main) + set 4 Secrets (from keygen)
+# edit branch names (dev/demo/main) + set 5 Secrets (from keygen)
 git add . && git commit -m "deploy setup" && git push
 ```
 
