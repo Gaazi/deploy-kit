@@ -45,9 +45,9 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
           SERVER_DEPLOY_PATH: ${{ secrets.SERVER_DEPLOY_PATH }}
         run: |
-          DEPLOY_PATH="${SERVER_DEPLOY_PATH:-$HOME/deploy-kit/auto_deploy.sh}"
+          DEPLOY_PATH="${SERVER_DEPLOY_PATH:-~/deploy-kit/auto_deploy.sh}"
           echo "$SSH_PRIVATE_KEY" > /tmp/dk
           chmod 600 /tmp/dk
           ssh -i /tmp/dk -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes \
             -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "nohup /bin/bash '$DEPLOY_PATH' '${{ github.ref_name }}' >> ~/deploy.log 2>&1 &"
+            "nohup /bin/bash $DEPLOY_PATH '${{ github.ref_name }}' >> ~/deploy.log 2>&1 &"
