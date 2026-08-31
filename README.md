@@ -486,6 +486,49 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 - Everything is optional — whatever is empty in the config gets skipped. Only `REPO_URL` + `APP_DIR` are required
 - It's better to keep DB backup `yes` on production (safe deploy)
 
+## 🔒 Gitignore Guide — for anyone using this kit
+
+**In your PROJECT repo, gitignore these (secrets — never commit):**
+
+```gitignore
+# Deploy kit secrets (per project)
+deploy-kit/config.sh       # server IP, user, DB creds, keys
+.env
+.env.*
+*.env
+deploy_key*
+*.key
+*.pem
+
+# Deploy runtime state
+.deployed_sha
+.failed_sha
+deploy-workspace/
+
+# Logs / backups
+*.log
+backups/
+```
+
+**Commit these (safe — placeholders only):**
+
+```gitignore
+# Yehi GitHub pe jayega — sab generic
+config.example.sh          # template (placeholders, safe)
+auto_deploy.sh rollback.sh setup.sh ...   # all kit scripts
+.github/workflows/         # workflows (no secrets — use GitHub Secrets)
+README.md
+```
+
+> **Golden rule:** GitHub pe wohi daalo jo **public ho sakta hai**. `config.example.sh` = safe template. `config.sh` = aapka personal setup = **kabhi nahi**.
+
+## ♻️ Recovery — kit lost ho jaye to?
+
+- **Kit code (scripts/docs):** ✅ GitHub se re-download kar sakte ho (`git clone` ya `curl`) — yeh code hai, public repo mein hai
+- **Aapka setup (`config.sh`):** ❌ **GitHub mein nahi hai** (by design — secret). Lost ho to **dobara banana parega**: `/bin/bash setup.sh` + `keygen.sh` + `detect.sh` (5 min)
+
+**So:** Code recover hota hai, setup nahi — isliye config.sh ka **backup apne server/local pe rakho** (never in git).
+
 ---
 
 ## ✅ Checklist (for completing the setup)
