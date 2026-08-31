@@ -232,6 +232,16 @@ It creates the SSH key, sets `DEPLOY_KEY` in `config.sh`, and prints **3 copy-pa
 
 That's it — one key pair works both ways (server → GitHub clone + GitHub → server trigger). For each new repo, repeat only block 1.
 
+**GitHub Secrets needed (5):**
+
+| Secret | Value |
+|--------|-------|
+| `SSH_PRIVATE_KEY` | Server's private key (keygen block 2) |
+| `SERVER_HOST` | Server IP/domain |
+| `SERVER_USER` | Server user |
+| `SSH_PORT` | `22` (or custom) |
+| `SERVER_DEPLOY_PATH` | **Full path to `auto_deploy.sh` ON THE SERVER** (e.g. `~/deploy-kit/auto_deploy.sh` or wherever you put the kit). Not set → defaults to `~/deploy-kit/auto_deploy.sh`. Wrong path = "No such file or directory" in `~/deploy.log`. |
+
 ### Step 4b: Auto-detect your project (fully dynamic — optional but recommended)
 
 ```bash
@@ -476,6 +486,7 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 | No DB backup | `DB_BACKUP` is no or DB_* is empty | Check the config |
 | "Another deploy is running" | Two pushes at once | Normal — the running deploy picks up the latest commit |
 | "Build FAILED" / "Migrate FAILED" | Build/migrate command error | Check the log, fix, push again; run `rollback.sh` if the site broke |
+| "No such file or directory" in `~/deploy.log` | Workflow tries to run `auto_deploy.sh` from wrong path | Set `SERVER_DEPLOY_PATH` GitHub Secret to the correct path on your server |
 
 ---
 
