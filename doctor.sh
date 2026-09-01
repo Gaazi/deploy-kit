@@ -221,6 +221,24 @@ fi
 
 [ "$NOTIF_ACTIVE" -eq 0 ] && info "No notification channels enabled (optional)"
 
+# ── 7.5 Kit Self-Update & Trigger Path ─────────────────────
+echo ""
+echo "== 7.5 Kit Self-Update & Trigger Path =="
+if [ "${KIT_SELF_UPDATE:-no}" = "yes" ]; then
+  if [ -d "$SCRIPT_DIR/.git" ]; then
+    ok "KIT_SELF_UPDATE=yes and kit is a git clone — will auto-pull on deploy (config.sh gitignored, safe)"
+  else
+    warn "KIT_SELF_UPDATE=yes but kit is NOT a git clone (no $SCRIPT_DIR/.git) — self-update will be skipped"
+  fi
+else
+  info "KIT_SELF_UPDATE not set (kit does not auto-update — optional)"
+fi
+if [ -n "${SERVER_DEPLOY_PATH:-}" ]; then
+  info "SERVER_DEPLOY_PATH set (workflow will call: $SERVER_DEPLOY_PATH)"
+else
+  info "SERVER_DEPLOY_PATH not set (workflow uses default ~/deploy-kit/auto_deploy.sh — set this if your kit lives elsewhere)"
+fi
+
 # ── 8. Health Check ─────────────────────────────────────────
 echo ""
 echo "== 8. Health Check & Safety =="
