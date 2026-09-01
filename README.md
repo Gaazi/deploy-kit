@@ -106,6 +106,15 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 
 ### Step 1: Put the kit on the server
 
+**Where to put the kit — your choice:**
+
+| Location | How | Notes |
+|---|---|---|
+| **Home level** (recommended) | `~/deploy-kit/` | Kit is separate from the app — simplest, survives every deploy |
+| **Inside the project** | `~/ilm.esabaq.com/deploy_kit/` | All in one folder — `auto_deploy.sh` + `rollback.sh` already exclude `deploy_kit/` / `deploy-kit/` so rsync never wipes it |
+
+> If you put the kit **inside the project folder**, set the `SERVER_DEPLOY_PATH` GitHub Secret to that path (e.g. `~/ilm.esabaq.com/deploy_kit/auto_deploy.sh`).
+
 ```bash
 # Option A — copy the files (FTP / file manager) into ~/deploy-kit/ ...
 mkdir -p ~/deploy-kit

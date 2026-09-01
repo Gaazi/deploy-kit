@@ -176,7 +176,7 @@ mkdir -p "$APP_DIR"
 RSYNC_ARGS=(--exclude='/.git/' --exclude='.env' --exclude='*.db' --exclude='*.sqlite3' \
   --exclude='__pycache__/' --exclude='*.pyc' --exclude='node_modules/' \
   --exclude='venv/' --exclude='.venv/' --exclude='*.log' --exclude='media/' \
-  --exclude='backups/' --exclude='tests/')
+  --exclude='backups/' --exclude='tests/' --exclude='deploy_kit/' --exclude='deploy-kit/')
 for ex in $RSYNC_EXCLUDES; do RSYNC_ARGS+=(--exclude="$ex"); done
 # APP_SUBDIR (optional): deploy only one subfolder (monorepos)
 SRC_DIR="$WORKSPACE"
