@@ -31,7 +31,10 @@ jobs:
     runs-on: self-hosted   # the runner on the server itself
     timeout-minutes: 10
     steps:
-      # No SSH needed — the runner lives on the same server as ~/deploy-kit
+      # No SSH needed — the runner lives on the same server as the deploy kit
       - name: Run deploy on the server
+        env:
+          SERVER_DEPLOY_PATH: ${{ secrets.SERVER_DEPLOY_PATH }}
         run: |
-          /bin/bash "$HOME/deploy-kit/auto_deploy.sh" "${{ github.ref_name }}"
+          DEPLOY_PATH="${SERVER_DEPLOY_PATH:-$HOME/deploy-kit/auto_deploy.sh}"
+          /bin/bash "$DEPLOY_PATH" "${{ github.ref_name }}"

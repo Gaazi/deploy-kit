@@ -7,8 +7,13 @@
 #                  sends a tiny SSH trigger (~1 min total).
 #                  Free plan = 2000 min/month ≈ 2000 deploys.
 # HOW TO COPY:     cp deploy.yml.example .github/workflows/deploy.yml
-# THEN:            edit branch names + set 4 GitHub Secrets
-#                  (SSH_PRIVATE_KEY, SERVER_HOST, SERVER_USER, SSH_PORT)
+# THEN:            edit branch names + set 5 GitHub Secrets
+#                  (SSH_PRIVATE_KEY, SERVER_HOST, SERVER_USER, SSH_PORT,
+#                   SERVER_DEPLOY_PATH)
+# SERVER_DEPLOY_PATH = full path to auto_deploy.sh ON THE SERVER.
+#   Default (if secret not set): ~/deploy-kit/auto_deploy.sh
+#   Put the kit anywhere on the server and set this secret to match.
+#   Tip: if deploy.log shows "No such file or directory", this path is wrong.
 # OTHER FILES:     deploy-selfhosted.yml  = only for VPS users who ran runner.sh
 #                  deploy-webhook.yml     = only for VPS users who ran webhook.sh
 # ============================================================
@@ -38,9 +43,11 @@ jobs:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
+          SERVER_DEPLOY_PATH: ${{ secrets.SERVER_DEPLOY_PATH }}
         run: |
+          DEPLOY_PATH="${SERVER_DEPLOY_PATH:-~/deploy-kit/auto_deploy.sh}"
           echo "$SSH_PRIVATE_KEY" > /tmp/dk
           chmod 600 /tmp/dk
           ssh -i /tmp/dk -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes \
             -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "nohup /bin/bash ~/deploy-kit/auto_deploy.sh ${{ github.ref_name }} >> ~/deploy.log 2>&1 &"
+            "nohup /bin/bash $DEPLOY_PATH '${{ github.ref_name }}' >> ~/deploy.log 2>&1 &"

@@ -77,6 +77,7 @@ Webhook listener: `webhook.sh start|stop|status`. Needs socat (VPS only).
 | `WORKSPACE_BASE` | Clone workspace base | `/home/$USER/deploy-workspace` |
 | `TOGGLE_FLAG` | Flag path for toggle system | `/home/$USER/.deploy_github` |
 | `SKIP_WHEN_FLAG` | If set + flag exists → deploy skipped | `""` |
+| `KIT_SELF_UPDATE` | `yes` → auto-pull kit updates from own git repo (if `$SCRIPT_DIR/.git` exists; config.sh gitignored, never touched; failure non-fatal) | `""` |
 | `DEFAULT_BRANCH` | Branch when none passed (auto_deploy + rollback) | `main` |
 | `LOG_FILE` | Log path | `/home/$USER/deploy.log` |
 | `RSYNC_EXCLUDES` | Extra rsync excludes, space-separated (added to defaults) | `""` |

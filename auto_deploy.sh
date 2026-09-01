@@ -43,6 +43,15 @@ fi
 
 log() { echo "$NOW: $1" >> "$LOG"; }
 
+# ── Optional self-update of the kit itself (safe: config.sh is gitignored) ──
+# If KIT_SELF_UPDATE=yes and this kit folder is a git clone, pull the latest
+# scripts from its own repo. config.sh + keys are gitignored, so they are
+# never touched. Failures are non-fatal (deploy continues).
+if [ "${KIT_SELF_UPDATE:-no}" = "yes" ] && [ -d "$SCRIPT_DIR/.git" ]; then
+  log "Kit self-update: git pull in $SCRIPT_DIR"
+  ( cd "$SCRIPT_DIR" && git pull --ff-only --quiet ) >> "$LOG" 2>&1 || log "Kit self-update: skipped (up to date or failed)"
+fi
+
 # ── Multi-channel notification helper (Telegram, Discord, Slack, Email) ──
 notify() {
   local html_msg="$1"
@@ -167,7 +176,7 @@ mkdir -p "$APP_DIR"
 RSYNC_ARGS=(--exclude='/.git/' --exclude='.env' --exclude='*.db' --exclude='*.sqlite3' \
   --exclude='__pycache__/' --exclude='*.pyc' --exclude='node_modules/' \
   --exclude='venv/' --exclude='.venv/' --exclude='*.log' --exclude='media/' \
-  --exclude='backups/' --exclude='tests/')
+  --exclude='backups/' --exclude='tests/' --exclude='deploy_kit/' --exclude='deploy-kit/')
 for ex in $RSYNC_EXCLUDES; do RSYNC_ARGS+=(--exclude="$ex"); done
 # APP_SUBDIR (optional): deploy only one subfolder (monorepos)
 SRC_DIR="$WORKSPACE"

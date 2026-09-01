@@ -74,7 +74,7 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 
 ---
 
-## 📁 Files (21 + .agents/)
+## 📁 Files (22 + .agents/)
 
 | File | What it does |
 |------|---------------|
@@ -99,12 +99,22 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 | `AGENTS.md` + `.agents/` | Agent rules + memory (for AI agents / future developers) |
 | `LICENSE` | MIT License — for a public repo |
 | `.gitignore` | So `config.sh` / secrets are never committed |
+| `.htaccess` | **Blocks web access if kit is inside the app dir** — protects `config.sh` (DB_PASS, keys) from the browser |
 
 ---
 
 ## 🚀 Setup — Step by Step (5 min)
 
 ### Step 1: Put the kit on the server
+
+**Where to put the kit — your choice:**
+
+| Location | How | Notes |
+|---|---|---|
+| **Home level** (recommended) | `~/deploy-kit/` | Kit is separate from the app — simplest, survives every deploy, never web-accessible |
+| **Inside the project** | `~/your-app.com/deploy_kit/` | All in one folder — rsync excludes `deploy_kit/` / `deploy-kit/` so it's never wiped. `.htaccess` denies browser access (config.sh protected) |
+
+> If you put the kit **inside the project folder**: set the `SERVER_DEPLOY_PATH` GitHub Secret to that path (e.g. `~/your-app.com/deploy_kit/auto_deploy.sh`). The included `.htaccess` blocks web access to `config.sh` — do not delete it.
 
 ```bash
 # Option A — copy the files (FTP / file manager) into ~/deploy-kit/ ...
@@ -176,6 +186,7 @@ nano config.sh
 | `DEPLOY_KEY` | Path to the GitHub deploy key | Key file | `/home/cpuser/.ssh/deploy_key` |
 | `WORKSPACE_BASE` | Where the git workspace lives | Path | `/home/cpuser/deploy-workspace` |
 | `TOGGLE_FLAG` / `SKIP_WHEN_FLAG` | Toggle system (optional) | Flag path + `1` | — |
+| `KIT_SELF_UPDATE` | `yes` = auto-pull kit updates from its own git repo (if cloned; `config.sh` is gitignored, never touched) | yes/no | `""` |
 | `DEFAULT_BRANCH` | Default deploy branch | Branch | `main` |
 | `LOG_FILE` | Where to log | Path | `/home/cpuser/deploy.log` |
 | `RSYNC_EXCLUDES` | Extra rsync excludes (space-separated) | `uploads/` | — |
@@ -232,6 +243,16 @@ It creates the SSH key, sets `DEPLOY_KEY` in `config.sh`, and prints **3 copy-pa
 
 That's it — one key pair works both ways (server → GitHub clone + GitHub → server trigger). For each new repo, repeat only block 1.
 
+**GitHub Secrets needed (5):**
+
+| Secret | Value |
+|--------|-------|
+| `SSH_PRIVATE_KEY` | Server's private key (keygen block 2) |
+| `SERVER_HOST` | Server IP/domain |
+| `SERVER_USER` | Server user |
+| `SSH_PORT` | `22` (or custom) |
+| `SERVER_DEPLOY_PATH` | **Full path to `auto_deploy.sh` ON THE SERVER** (e.g. `~/deploy-kit/auto_deploy.sh` or wherever you put the kit). Not set → defaults to `~/deploy-kit/auto_deploy.sh`. Wrong path = "No such file or directory" in `~/deploy.log`. |
+
 ### Step 4b: Auto-detect your project (fully dynamic — optional but recommended)
 
 ```bash
@@ -247,7 +268,7 @@ That's it — one key pair works both ways (server → GitHub clone + GitHub →
 
 | File | When to use | Extra setup needed? |
 |------|--------------|---------------------|
-| **`deploy.yml.example`** ✅ | **MOST USERS** — GitHub's free hosted runner (2000 min/mo) | only 4 Secrets |
+| **`deploy.yml.example`** ✅ | **MOST USERS** — GitHub's free hosted runner (2000 min/mo) | only 5 Secrets |
 | `deploy-selfhosted.yml.example` | only if you ran `runner.sh` on a VPS | runner.sh (VPS) |
 | `deploy-webhook.yml.example` | only if you ran `webhook.sh start` on a VPS | webhook.sh (VPS) |
 
@@ -319,7 +340,7 @@ TELEGRAM_BOT_TOKEN=""  # leave empty → no alerts
 # in your PROJECT repo (myapp):
 mkdir -p .github/workflows
 cp ~/deploy-kit/.github/workflows/deploy.yml.example .github/workflows/deploy.yml
-# edit branch names (dev/demo/main) + set 4 Secrets (from keygen)
+# edit branch names (dev/demo/main) + set 5 Secrets (from keygen)
 git add . && git commit -m "deploy setup" && git push
 ```
 
@@ -476,6 +497,43 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 | No DB backup | `DB_BACKUP` is no or DB_* is empty | Check the config |
 | "Another deploy is running" | Two pushes at once | Normal — the running deploy picks up the latest commit |
 | "Build FAILED" / "Migrate FAILED" | Build/migrate command error | Check the log, fix, push again; run `rollback.sh` if the site broke |
+| "No such file or directory" in `~/deploy.log` | Workflow tries to run `auto_deploy.sh` from wrong path | Set `SERVER_DEPLOY_PATH` GitHub Secret to the correct path on your server |
+
+## ✅ How to verify a deploy actually worked
+
+**GitHub Actions green check** only means the trigger ran (~6s). It does NOT mean the deploy succeeded.
+
+### 1. Server log (full detail)
+
+```bash
+tail -50 ~/deploy.log
+```
+
+You should see:
+```
+🚀 Deploy started (mydomain.com · main)
+✅ Deploy successful (mydomain.com · main) — health OK
+```
+
+If you see `No such file or directory`, the `SERVER_DEPLOY_PATH` secret is wrong.
+
+### 2. The site (quick)
+
+```bash
+# Health endpoint (if configured)
+curl -s https://yoursite.com/health
+
+# Or just the page status
+curl -s -o /dev/null -w "%{http_code}" https://yoursite.com/
+```
+
+### 3. The deployed commit
+
+```bash
+cat ~/deploy-kit/deploy-workspace/.deployed_sha
+```
+
+Compare it with the latest commit on GitHub — if they match, the deploy went through.
 
 ---
 
@@ -486,11 +544,54 @@ In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is pr
 - Everything is optional — whatever is empty in the config gets skipped. Only `REPO_URL` + `APP_DIR` are required
 - It's better to keep DB backup `yes` on production (safe deploy)
 
+## 🔒 Gitignore Guide — for anyone using this kit
+
+**In your PROJECT repo, gitignore these (secrets — never commit):**
+
+```gitignore
+# Deploy kit secrets (per project)
+deploy-kit/config.sh       # server IP, user, DB creds, keys
+.env
+.env.*
+*.env
+deploy_key*
+*.key
+*.pem
+
+# Deploy runtime state
+.deployed_sha
+.failed_sha
+deploy-workspace/
+
+# Logs / backups
+*.log
+backups/
+```
+
+**Commit these (safe — placeholders only):**
+
+```gitignore
+# Yehi GitHub pe jayega — sab generic
+config.example.sh          # template (placeholders, safe)
+auto_deploy.sh rollback.sh setup.sh ...   # all kit scripts
+.github/workflows/         # workflows (no secrets — use GitHub Secrets)
+README.md
+```
+
+> **Golden rule:** GitHub pe wohi daalo jo **public ho sakta hai**. `config.example.sh` = safe template. `config.sh` = aapka personal setup = **kabhi nahi**.
+
+## ♻️ Recovery — kit lost ho jaye to?
+
+- **Kit code (scripts/docs):** ✅ GitHub se re-download kar sakte ho (`git clone` ya `curl`) — yeh code hai, public repo mein hai
+- **Aapka setup (`config.sh`):** ❌ **GitHub mein nahi hai** (by design — secret). Lost ho to **dobara banana parega**: `/bin/bash setup.sh` + `keygen.sh` + `detect.sh` (5 min)
+
+**So:** Code recover hota hai, setup nahi — isliye config.sh ka **backup apne server/local pe rakho** (never in git).
+
 ---
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (21 files)
+- [ ] `~/deploy-kit/` on the server (22 files)
 - [ ] Created `config.sh` (wizard: `/bin/bash setup.sh`)
 - [ ] `chmod +x *.sh`
 - [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅
