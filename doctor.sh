@@ -240,7 +240,8 @@ else
 fi
 
 # Web-accessible config.sh warning (kit inside project root = secrets exposed)
-if [ -n "$APP_DIR" ] && case "$SCRIPT_DIR" in "$APP_DIR"*) true;; *) false;; esac; then
+# Trailing "/*" in the pattern — "/home/user/app2" must NOT match "/home/user/app"
+if [ -n "$APP_DIR" ] && case "$SCRIPT_DIR" in "$APP_DIR"/*) true;; *) false;; esac; then
   if [ -f "$SCRIPT_DIR/.htaccess" ]; then
     ok "Kit is inside the app dir but .htaccess blocks web access — config.sh is protected"
   else

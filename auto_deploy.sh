@@ -12,8 +12,24 @@
 # No project-specific info — everything comes from config.sh.
 # ============================================================
 
+# ── Self-update snapshot guard (runs BEFORE SCRIPT_DIR is finalized) ──
+# When KIT_SELF_UPDATE=yes, re-exec this script from a /tmp SNAPSHOT so the
+# later `git pull` can safely rewrite the real file — bash never executes a
+# file that changes under it (mid-run corruption risk on shared hosting).
+if [ -z "${KIT_SNAP_EXEC:-}" ]; then
+  _kitdir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  if [ "${KIT_SELF_UPDATE:-no}" = "yes" ] && [ -d "$_kitdir/.git" ]; then
+    _snap="$(mktemp /tmp/kit-deploy.XXXXXX.sh 2>/dev/null)" || _snap=""
+    if [ -n "$_snap" ] && cp "$_kitdir/auto_deploy.sh" "$_snap" 2>/dev/null; then
+      KIT_SNAP_EXEC=1 KIT_REAL_DIR="$_kitdir" KIT_SNAP="$_snap" \
+        exec /bin/bash "$_snap" "$@"
+    fi
+  fi
+fi
+
 # ── Config load ─────────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="${KIT_REAL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+trap '[ -n "${KIT_SNAP:-}" ] && rm -f "$KIT_SNAP" 2>/dev/null' EXIT
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "❌ config.sh not found — first run: cp config.example.sh config.sh"
