@@ -239,6 +239,15 @@ else
   info "SERVER_DEPLOY_PATH not set (workflow uses default ~/deploy-kit/auto_deploy.sh — set this if your kit lives elsewhere)"
 fi
 
+# Web-accessible config.sh warning (kit inside project root = secrets exposed)
+if [ -n "$APP_DIR" ] && case "$SCRIPT_DIR" in "$APP_DIR"*) true;; *) false;; esac; then
+  if [ -f "$SCRIPT_DIR/.htaccess" ]; then
+    ok "Kit is inside the app dir but .htaccess blocks web access — config.sh is protected"
+  else
+    fail "Kit is inside the web-accessible app dir but NO .htaccess — config.sh (DB_PASS, keys) may be visible in the browser. Add a .htaccess that denies all access."
+  fi
+fi
+
 # ── 8. Health Check ─────────────────────────────────────────
 echo ""
 echo "== 8. Health Check & Safety =="

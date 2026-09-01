@@ -78,7 +78,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 
 ---
 
-## File Structure (21 files + .agents/)
+## File Structure (22 files + .agents/)
 
 | File | Purpose |
 |------|---------|
@@ -101,6 +101,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 | `.github/workflows/test.yml` | CI self-test (runs test.sh on push/PR) |
 | `README.md` | User guide (quickstart + 3 setup methods, config table, checklist) |
 | `.gitignore` | Protects `config.sh` / secrets |
+| `.htaccess` | Denies web access if kit is inside the app dir (protects config.sh) |
 | `AGENTS.md` | Project agent rules (this file) |
 | `LICENSE` | MIT |
 
