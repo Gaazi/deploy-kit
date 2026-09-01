@@ -1,0 +1,9 @@
+# Deploy Kit — deny all web access (secrets are in config.sh)
+# If you put deploy_kit/ inside your project, this file protects it.
+# Without this, config.sh (DB_PASS, keys) could be visible via browser.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Deny from all
+</IfModule>

@@ -74,7 +74,7 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 
 ---
 
-## 📁 Files (21 + .agents/)
+## 📁 Files (22 + .agents/)
 
 | File | What it does |
 |------|---------------|
@@ -99,6 +99,7 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 | `AGENTS.md` + `.agents/` | Agent rules + memory (for AI agents / future developers) |
 | `LICENSE` | MIT License — for a public repo |
 | `.gitignore` | So `config.sh` / secrets are never committed |
+| `.htaccess` | **Blocks web access if kit is inside the app dir** — protects `config.sh` (DB_PASS, keys) from the browser |
 
 ---
 
@@ -110,10 +111,10 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 
 | Location | How | Notes |
 |---|---|---|
-| **Home level** (recommended) | `~/deploy-kit/` | Kit is separate from the app — simplest, survives every deploy |
-| **Inside the project** | `~/your-app.com/deploy_kit/` | All in one folder — `auto_deploy.sh` + `rollback.sh` already exclude `deploy_kit/` / `deploy-kit/` so rsync never wipes it |
+| **Home level** (recommended) | `~/deploy-kit/` | Kit is separate from the app — simplest, survives every deploy, never web-accessible |
+| **Inside the project** | `~/your-app.com/deploy_kit/` | All in one folder — rsync excludes `deploy_kit/` / `deploy-kit/` so it's never wiped. `.htaccess` denies browser access (config.sh protected) |
 
-> If you put the kit **inside the project folder**, set the `SERVER_DEPLOY_PATH` GitHub Secret to that path (e.g. `~/your-app.com/deploy_kit/auto_deploy.sh`).
+> If you put the kit **inside the project folder**: set the `SERVER_DEPLOY_PATH` GitHub Secret to that path (e.g. `~/your-app.com/deploy_kit/auto_deploy.sh`). The included `.htaccess` blocks web access to `config.sh` — do not delete it.
 
 ```bash
 # Option A — copy the files (FTP / file manager) into ~/deploy-kit/ ...
@@ -590,7 +591,7 @@ README.md
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (21 files)
+- [ ] `~/deploy-kit/` on the server (22 files)
 - [ ] Created `config.sh` (wizard: `/bin/bash setup.sh`)
 - [ ] `chmod +x *.sh`
 - [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅
