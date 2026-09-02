@@ -168,7 +168,13 @@ case "${APP_TYPE:-}" in
     ;;
   docker)
     command -v docker >/dev/null 2>&1 && ok "docker found" || fail "docker CLI missing"
-    command -v docker compose >/dev/null 2>&1 || command -v docker-compose >/dev/null 2>&1 && ok "docker compose found" || warn "docker compose missing"
+    # 'command -v docker compose' is WRONG — it only checks 'docker' again.
+    # Ask docker itself whether the compose plugin/subcommand works.
+    if docker compose version >/dev/null 2>&1 || command -v docker-compose >/dev/null 2>&1; then
+      ok "docker compose found"
+    else
+      warn "docker compose missing"
+    fi
     ;;
 esac
 

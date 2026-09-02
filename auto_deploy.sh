@@ -113,10 +113,14 @@ notify() {
   fi
 }
 
-# ── 0. GitHub-mode flag (optional toggle — from config) ──────
+# ── 0. GitHub-mode flag (optional toggle — cron deploys only) ─
+# The flag means "GitHub Actions is active now" — so ONLY cron-fired
+# deploys skip (cron.sh writes DEPLOY_TRIGGER=cron in its line).
+# Actions/webhook/runner deploys never carry it and always run.
 TOGGLE_FLAG="${TOGGLE_FLAG:-/home/$SERVER_USER/.deploy_github}"
-if [ -f "$TOGGLE_FLAG" ] && [ -n "$SKIP_WHEN_FLAG" ]; then
-  log "Skipped — flag present ($TOGGLE_FLAG)"
+if [ "${DEPLOY_TRIGGER:-}" = "cron" ] && [ -f "$TOGGLE_FLAG" ] && [ -n "$SKIP_WHEN_FLAG" ]; then
+  log "Skipped — flag present ($TOGGLE_FLAG), cron disabled while GitHub mode is on"
+  echo "⏭️ Cron deploy skipped — GitHub mode flag present ($TOGGLE_FLAG). Remove it to re-enable cron."
   exit 0
 fi
 
@@ -139,7 +143,9 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   fi
 fi
 echo $$ > "$LOCK_DIR/pid" 2>/dev/null
-trap 'rm -rf "$LOCK_DIR" 2>/dev/null' EXIT
+# NOTE: this trap REPLACES the snapshot trap above — clean both here,
+# otherwise /tmp/kit-deploy.* leaked on every KIT_SELF_UPDATE=yes deploy.
+trap 'rm -rf "$LOCK_DIR" 2>/dev/null; rm -f "${KIT_SNAP:-}" 2>/dev/null' EXIT
 
 # ── 1. Git workspace ────────────────────────────────────────
 # --single-branch: only this branch's history — minimum network + disk

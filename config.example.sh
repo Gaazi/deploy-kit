@@ -64,7 +64,7 @@ WORKSPACE_BASE="/home/$SERVER_USER/deploy-workspace"  # clone workspace
 
 # ── Advanced (optional — dynamic defaults) ───────────────────
 TOGGLE_FLAG=""                        # "" = default /home/$SERVER_USER/.deploy_github
-SKIP_WHEN_FLAG=""                     # "1" = flag exists → deploy skips (toggle mode)
+SKIP_WHEN_FLAG=""                     # "1" = flag exists → CRON deploys skip (Actions/webhook/runner always run)
 KIT_SELF_UPDATE=""                    # "yes" = auto-pull kit updates from its own git repo (if cloned; config.sh is gitignored, never touched)
 DEFAULT_BRANCH="main"                 # branch used when none is passed
 LOG_FILE=""                           # "" = default /home/$SERVER_USER/deploy.log

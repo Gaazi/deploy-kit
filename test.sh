@@ -402,6 +402,75 @@ CFG
 (cd "$TMP/notif-kit" && bash auto_deploy.sh main >/dev/null 2>&1)
 [ -f "$TMP/notif-app/index.html" ] && ok "multi-channel notify: deploy completed cleanly" || bad "multi-channel notify: deploy completed cleanly"
 
+echo "== 16. cron.sh dedup (re-install replaces, never duplicates) =="
+# fake crontab that stores state in a file (no real cron needed)
+mkdir -p "$TMP/cronbin" "$TMP/cronhome"
+CRONSTORE="$TMP/cronstore"
+cat > "$TMP/cronbin/crontab" <<'CFAKE'
+#!/bin/bash
+STORE="$CRONSTORE_FILE"
+if [ "$1" = "-l" ]; then
+  [ -f "$STORE" ] && cat "$STORE" || true
+  exit 0
+fi
+cat > "$STORE"
+CFAKE
+chmod +x "$TMP/cronbin/crontab"
+cp cron.sh "$TMP/"
+export CRONSTORE_FILE="$CRONSTORE"
+( cd "$TMP" && PATH="$TMP/cronbin:$PATH" HOME="$TMP/cronhome" bash cron.sh 2 main >/dev/null 2>&1 )
+( cd "$TMP" && PATH="$TMP/cronbin:$PATH" HOME="$TMP/cronhome" bash cron.sh 5 main >/dev/null 2>&1 )
+N="$(grep -c "auto_deploy.sh" "$CRONSTORE" 2>/dev/null || echo 0)"
+[ "$N" = "1" ] && ok "cron.sh: re-install replaces old line (no duplicates)" || bad "cron.sh: re-install replaces old line (no duplicates) — got $N lines"
+grep -q '\*/5' "$CRONSTORE" && ok "cron.sh: latest interval kept" || bad "cron.sh: latest interval kept"
+grep -q "DEPLOY_TRIGGER=cron" "$CRONSTORE" && ok "cron.sh: line marks DEPLOY_TRIGGER=cron" || bad "cron.sh: line marks DEPLOY_TRIGGER=cron"
+
+echo "== 17. toggle flag skips ONLY cron deploys =="
+mkdir -p "$TMP/toggle-kit"
+cp auto_deploy.sh "$TMP/toggle-kit/"
+cat > "$TMP/toggle-kit/config.sh" <<CFG
+REPO_URL="file://$BARE"
+APP_DIR="$TMP/toggle-app"
+WORKSPACE_BASE="$TMP/toggle-ws"
+LOG_FILE="$TMP/toggle.log"
+TOGGLE_FLAG="$TMP/toggle-flag"
+SKIP_WHEN_FLAG="1"
+CFG
+touch "$TMP/toggle-flag"
+# cron-fired (DEPLOY_TRIGGER=cron) → must skip
+OUT="$( (cd "$TMP/toggle-kit" && DEPLOY_TRIGGER=cron bash auto_deploy.sh main 2>&1) )"
+echo "$OUT" | grep -qi "skipped" && ok "toggle: cron deploy skipped when flag present" || bad "toggle: cron deploy skipped when flag present"
+[ ! -f "$TMP/toggle-app/index.html" ] && ok "toggle: skipped cron deploy touched nothing" || bad "toggle: skipped cron deploy touched nothing"
+# GitHub/Actions-fired (no trigger) → must deploy despite the flag
+( cd "$TMP/toggle-kit" && bash auto_deploy.sh main >/dev/null 2>&1 )
+[ -f "$TMP/toggle-app/index.html" ] && ok "toggle: Actions deploy runs despite flag" || bad "toggle: Actions deploy runs despite flag"
+
+echo "== 18. webhook.sh rejects path-traversal branch =="
+BODYT='{"branch":"../../etc/passwd","sha":"abc"}'
+LENT=$(printf '%s' "$BODYT" | wc -c)
+RESPT="$(printf 'POST /webhook/deploy/ HTTP/1.1\r\nHost: x\r\nX-Deploy-Secret: testsecret\r\nContent-Length: %s\r\n\r\n%s' "$LENT" "$BODYT" | (cd "$TMP/webhook-kit" && bash webhook.sh handler 2>/dev/null))"
+echo "$RESPT" | grep -q "403" && ok "webhook: traversal branch → 403" || bad "webhook: traversal branch → 403"
+BODYQ="$(printf '{"branch":"ma\x27in","sha":"abc"}')"
+LENQ=$(printf '%s' "$BODYQ" | wc -c)
+RESPQ="$(printf 'POST /webhook/deploy/ HTTP/1.1\r\nHost: x\r\nX-Deploy-Secret: testsecret\r\nContent-Length: %s\r\n\r\n%s' "$LENQ" "$BODYQ" | (cd "$TMP/webhook-kit" && bash webhook.sh handler 2>/dev/null))"
+echo "$RESPQ" | grep -q "403" && ok "webhook: quote-in-branch → 403" || bad "webhook: quote-in-branch → 403"
+
+echo "== 19. KIT_SNAP temp file cleaned on exit =="
+mkdir -p "$TMP/snap-kit/.git"
+cp auto_deploy.sh "$TMP/snap-kit/"
+cat > "$TMP/snap-kit/config.sh" <<CFG
+REPO_URL="file://$BARE"
+APP_DIR="$TMP/snap-app"
+WORKSPACE_BASE="$TMP/snap-ws"
+LOG_FILE="$TMP/snap.log"
+KIT_SELF_UPDATE="yes"
+CFG
+# .git dir exists but pull fails (no real repo) → self-update skipped, snapshot trap must still clean /tmp
+BEFORE="$(ls /tmp/kit-deploy.* 2>/dev/null | wc -l)"
+( cd "$TMP/snap-kit" && bash auto_deploy.sh main >/dev/null 2>&1 )
+AFTER="$(ls /tmp/kit-deploy.* 2>/dev/null | wc -l)"
+[ "$AFTER" -le "$BEFORE" ] && ok "KIT_SNAP: no /tmp/kit-deploy.* leak after deploy" || bad "KIT_SNAP: no /tmp/kit-deploy.* leak after deploy"
+
 echo ""
 echo "============================================="
 echo "  PASS: $PASS   FAIL: $FAIL"

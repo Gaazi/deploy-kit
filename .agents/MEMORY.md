@@ -11,7 +11,7 @@
 - **Resource budget (GitHub):** hosted ~1 min/deploy · native webhook 0 · cron 0 · self-hosted 0 · docs push 0 (paths-ignore)
 - **Resource budget (server):** `--single-branch` clone · SHA-skip instant · log 1MB rotation · DB_BACKUP_KEEP · deploy lock · optional steps only when configured
 - **Required config:** only `REPO_URL` + `APP_DIR`. Everything else optional — empty = skip, never crash.
-- **Test:** `/bin/bash test.sh` — 43 checks, run before committing. CI runs it on every push to main.
+- **Test:** `/bin/bash test.sh` — 52 checks, run before committing. CI runs it on every push to main.
 - **Deploy flow:** git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health → notifications (Telegram/Discord/Slack/Email)
 
 ## File map (what each script does)
@@ -114,3 +114,4 @@
 - **Secret count:** 5 (SSH_PRIVATE_KEY, SERVER_HOST, SERVER_USER, SSH_PORT, SERVER_DEPLOY_PATH) — keep in sync across README/keygen/reference.
 - **KIT_SELF_UPDATE (self-update lesson):** optional config key — `yes` → auto_deploy pulls latest kit scripts from its own git repo (if `$SCRIPT_DIR/.git` exists). config.sh is gitignored so it is never touched; pull failure is non-fatal. A real deployment had self-update copying to the wrong path — deploy-kit avoids this by pulling in SCRIPT_DIR itself.
 - **Security (.htaccess + doctor check):** if kit is placed INSIDE the web-accessible app dir, config.sh (DB_PASS/keys) could be visible in a browser. `.htaccess` (deny all) ships with the kit to block it; doctor.sh fails if kit is inside app dir with no .htaccess. rsync excludes deploy_kit/ + deploy-kit/ so --delete never wipes it.
+- **Full review fixes (2026-09-02, 52 checks):** (1) cron.sh dedup grep never matched the QUOTED cron line (`auto_deploy.sh' 'main`) → re-installs piled duplicate lines; pattern now matches the real format. (2) Toggle redesign: flag check is now `DEPLOY_TRIGGER=cron`-only (cron.sh writes it in the line) — before, flag + SKIP_WHEN_FLAG blocked ALL triggers (Actions included = nothing deployed). (3) lock trap overwrote the KIT_SNAP trap → /tmp/kit-deploy.* leaked every self-update deploy; combined trap cleans both. (4) webhook.sh validates BRANCH (git-safe chars, no `..`) before it becomes a path. (5) all 3 workflow examples pass branch via env + `tr -cd` sanitize — inline `'${{ github.ref_name }}'` was a shell/JSON injection vector. (6) doctor.sh `command -v docker compose` was a false positive (only re-checked `docker`) → now `docker compose version`. (7) manual rollback clears `.failed_sha` (auto-rollback re-writes it after, loop guard intact).
