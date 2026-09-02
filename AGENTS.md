@@ -101,7 +101,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 | `webhook.sh` | **~1-2s deploys (VPS)** — socat HTTP listener: GitHub POST → auto_deploy.sh, secret-verified |
 | `test.sh` | Self-test — bash -n + missing-config errors + full local file:// integration test (deploy → skip → rollback) |
 | `config.example.sh` | Settings template — copy to `config.sh` and fill |
-| `.github/workflows/deploy.yml.example` | GitHub Actions trigger (hosted runner, ~1 min) |
+| `.github/workflows/deploy.yml.example` | GitHub Actions trigger (hosted runner, ~1 min; bootstraps kit on server if missing) |
 | `.github/workflows/deploy-selfhosted.yml.example` | GitHub Actions trigger (self-hosted runner, ~6s) |
 | `.github/workflows/deploy-webhook.yml.example` | GitHub Actions trigger (webhook, ~1-2s) |
 | `.github/workflows/test.yml` | CI self-test (runs test.sh on push/PR) |

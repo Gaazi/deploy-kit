@@ -6,6 +6,9 @@
 # WHAT it does:    GitHub's free hosted runner (ubuntu-latest) runs,
 #                  sends a tiny SSH trigger (~1 min total).
 #                  Free plan = 2000 min/month ≈ 2000 deploys.
+# BOOTSTRAP:       if the kit is not on the server yet, the first push
+#                  auto-clones it to ~/deploy-kit/ (public HTTPS repo —
+#                  no key needed). Then fill config.sh once on the server.
 # HOW TO COPY:     cp deploy.yml.example .github/workflows/deploy.yml
 # THEN:            edit branch names + set 5 GitHub Secrets
 #                  (SSH_PRIVATE_KEY, SERVER_HOST, SERVER_USER, SSH_PORT,
@@ -13,7 +16,6 @@
 # SERVER_DEPLOY_PATH = full path to auto_deploy.sh ON THE SERVER.
 #   Default (if secret not set): ~/deploy-kit/auto_deploy.sh
 #   Put the kit anywhere on the server and set this secret to match.
-#   Tip: if deploy.log shows "No such file or directory", this path is wrong.
 # OTHER FILES:     deploy-selfhosted.yml  = only for VPS users who ran runner.sh
 #                  deploy-webhook.yml     = only for VPS users who ran webhook.sh
 # ============================================================

@@ -35,6 +35,8 @@ This one command does everything:
 
 Then just copy the workflow to GitHub + push. **Done — 5 min.**
 
+> **Shortcut:** if you use the hosted workflow (`deploy.yml.example`), you can skip the server install entirely — the first push **auto-installs the kit on the server** (bootstrap). Then fill `config.sh` once on the server. Details in Step 1.
+
 > Everything below is detailed — read it only when you need it.
 
 ---
@@ -91,7 +93,7 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 | `auto_deploy.sh` | Deploy script — git → rsync → build → backup → migrate → restart → health → notifications |
 | `rollback.sh` | Go back to the previous commit + DB restore |
 | `test.sh` | **Self-test** — syntax check + full local deploy/rollback test (no network) |
-| `.github/workflows/deploy.yml.example` | GitHub Actions trigger (hosted runner, ~1 min) |
+| `.github/workflows/deploy.yml.example` | GitHub Actions trigger (hosted runner, ~1 min) — **auto-installs the kit on the server if missing** |
 | `.github/workflows/deploy-selfhosted.yml.example` | GitHub Actions trigger (self-hosted runner, ~6s) |
 | `.github/workflows/deploy-webhook.yml.example` | GitHub Actions trigger (webhook, ~1-2s) |
 | `.github/workflows/test.yml` | CI self-test (runs test.sh on push/PR) |
@@ -107,20 +109,28 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 
 ### Step 1: Put the kit on the server
 
+**Three ways — pick one:**
+
+| Option | How | When |
+|---|---|---|
+| **A — Bootstrap (easiest)** | Do nothing. The hosted workflow (`deploy.yml.example`) auto-clones the kit to `~/deploy-kit/` on the first push. Then fill `config.sh` once on the server | You use hosted Actions |
+| **B — Copy manually** | FTP / file manager into `~/deploy-kit/` | Any hosting |
+| **C — Download on server** | `git clone https://github.com/Gaazi/deploy-kit.git ~/deploy-kit` | You have SSH access |
+
 **Where to put the kit — your choice:**
 
 | Location | How | Notes |
 |---|---|---|
-| **Home level** (recommended) | `~/deploy-kit/` | Kit is separate from the app — simplest, survives every deploy, never web-accessible |
+| **Home level** (recommended) | `~/deploy-kit/` | Kit is separate from the app — simplest, survives every deploy, never web-accessible. Bootstrap installs here by default |
 | **Inside the project** | `~/your-app.com/deploy_kit/` | All in one folder — rsync excludes `deploy_kit/` / `deploy-kit/` so it's never wiped. `.htaccess` denies browser access (config.sh protected) |
 
 > If you put the kit **inside the project folder**: set the `SERVER_DEPLOY_PATH` GitHub Secret to that path (e.g. `~/your-app.com/deploy_kit/auto_deploy.sh`). The included `.htaccess` blocks web access to `config.sh` — do not delete it.
 
 ```bash
-# Option A — copy the files (FTP / file manager) into ~/deploy-kit/ ...
+# Option B — copy the files (FTP / file manager) into ~/deploy-kit/ ...
 mkdir -p ~/deploy-kit
 
-# Option B — download directly on the server (once the kit repo is public/forked):
+# Option C — download directly on the server:
 cd ~/deploy-kit
 for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh detect.sh cron.sh test.sh config.example.sh; do
   curl -fsSL -o "$f" "https://raw.githubusercontent.com/YOUR_USER/deploy-kit/main/$f"
@@ -593,12 +603,12 @@ README.md
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (23 files)
+- [ ] `~/deploy-kit/` on the server (23 files) — **or skip: the hosted workflow bootstraps it on first push**
 - [ ] Created `config.sh` (wizard: `/bin/bash setup.sh`)
 - [ ] `chmod +x *.sh`
 - [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅
 - [ ] GitHub Deploy key added (keygen block 1)
-- [ ] GitHub Secrets (4) added (keygen blocks 2 + 3)
+- [ ] GitHub Secrets (5) added (keygen blocks 2 + 3, plus `SERVER_DEPLOY_PATH` if the kit is not at `~/deploy-kit/`)
 - [ ] Auto-detect project: `/bin/bash detect.sh` (optional but easy)
 - [ ] `.github/workflows/deploy.yml` in your repo
 - [ ] Manual test: `/bin/bash auto_deploy.sh main` ✅
