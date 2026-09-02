@@ -282,19 +282,50 @@ if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ]; then
   case "$KEEP" in ''|*[!0-9]*) KEEP=7;; esac   # safety: non-numeric → default 7
   [ "$KEEP" -lt 1 ] && KEEP=1                  # safety: 0 would delete ALL backups
   if [ "$DB_TYPE" = "mysql" ] && [ -n "$DB_USER" ] && command -v mysqldump >/dev/null 2>&1; then
+    BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.sql"
     MYSQL_PWD="$DB_PASS" mysqldump -h "$DB_HOST" -u "$DB_USER" --single-transaction "$DB_NAME" \
-      > "$BK_DIR/${SITE_DOMAIN}_${TS}.sql" 2>>"$LOG" \
+      > "$BK_FILE" 2>>"$LOG" \
       && ls -1t "$BK_DIR"/*.sql 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f 2>/dev/null
-    log "DB backup: $BK_DIR/${SITE_DOMAIN}_${TS}.sql (last $KEEP kept)"
+    log "DB backup: $BK_FILE (last $KEEP kept)"
   elif [ "$DB_TYPE" = "postgres" ] && [ -n "$DB_USER" ] && command -v pg_dump >/dev/null 2>&1; then
+    BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.sql"
     PGPASSWORD="$DB_PASS" pg_dump -h "$DB_HOST" -U "$DB_USER" "$DB_NAME" \
-      > "$BK_DIR/${SITE_DOMAIN}_${TS}.sql" 2>>"$LOG" \
+      > "$BK_FILE" 2>>"$LOG" \
       && ls -1t "$BK_DIR"/*.sql 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f 2>/dev/null
-    log "DB backup: $BK_DIR/${SITE_DOMAIN}_${TS}.sql (last $KEEP kept)"
+    log "DB backup: $BK_FILE (last $KEEP kept)"
   elif [ "$DB_TYPE" = "sqlite" ] && [ -f "$APP_DIR/$DB_NAME" ]; then
-    cp "$APP_DIR/$DB_NAME" "$BK_DIR/${SITE_DOMAIN}_${TS}.db" 2>>"$LOG" \
+    BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.db"
+    cp "$APP_DIR/$DB_NAME" "$BK_FILE" 2>>"$LOG" \
       && ls -1t "$BK_DIR"/*.db 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f 2>/dev/null
-    log "DB backup (sqlite): $BK_DIR/${SITE_DOMAIN}_${TS}.db (last $KEEP kept)"
+    log "DB backup (sqlite): $BK_FILE (last $KEEP kept)"
+  fi
+
+  # ── Backup verification (protect rollback from restoring garbage) ──
+  # An empty/corrupt dump means a failed migration CANNOT be rolled back.
+  # Abort BEFORE migrate when a migration is configured (the risky step);
+  # otherwise warn only (backup was precautionary).
+  BK_VERDICT="ok"
+  if [ -z "${BK_FILE:-}" ] || [ ! -s "$BK_FILE" ]; then
+    BK_VERDICT="empty"
+  elif [ "$DB_TYPE" = "mysql" ] && ! grep -q "MySQL dump" "$BK_FILE" 2>/dev/null; then
+    BK_VERDICT="invalid"
+  elif [ "$DB_TYPE" = "postgres" ] && ! grep -q "PostgreSQL database dump" "$BK_FILE" 2>/dev/null; then
+    BK_VERDICT="invalid"
+  elif [ "$DB_TYPE" = "sqlite" ] && [ "$(head -c 15 "$BK_FILE" 2>/dev/null)" != "SQLite format 3" ]; then
+    BK_VERDICT="invalid"
+  fi
+  if [ "$BK_VERDICT" != "ok" ]; then
+    log "DB backup INVALID ($BK_VERDICT): ${BK_FILE:-none}"
+    if [ -n "$MIGRATE_CMD" ]; then
+      notify "❌ <b>Deploy ABORTED (DB backup $BK_VERDICT)</b> ($SITE_DOMAIN · $BRANCH)
+Migration is configured but the pre-deploy backup is $BK_VERDICT — deploying would leave rollback impossible.
+Fix DB creds/connection in config.sh, then push again." "Deploy ABORTED (bad backup): $SITE_DOMAIN ($BRANCH)"
+      log "Deploy aborted — refusing to migrate without a valid backup"
+      echo "❌ DB backup $BK_VERDICT — refusing to migrate (rollback would be impossible). Fix config.sh DB creds."
+      exit 1
+    fi
+    log "Warning: backup invalid but no migration configured — continuing"
+    echo "⚠️ DB backup $BK_VERDICT — continuing (no migration configured, low risk)"
   fi
 fi
 
