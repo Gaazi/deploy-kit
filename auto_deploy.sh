@@ -298,21 +298,35 @@ if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ]; then
   if [ "$DB_TYPE" = "mysql" ] && [ -n "$DB_USER" ] && command -v mysqldump >/dev/null 2>&1; then
     BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.sql"
     MYSQL_PWD="$DB_PASS" mysqldump -h "$DB_HOST" -u "$DB_USER" --single-transaction "$DB_NAME" \
-      > "$BK_FILE" 2>>"$LOG" \
-      && ls -1t "$BK_DIR"/*.sql 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f 2>/dev/null
-    log "DB backup: $BK_FILE (last $KEEP kept)"
+      > "$BK_FILE" 2>>"$LOG"
+    archive_old_backups
+    log "DB backup: $BK_FILE (last $KEEP fresh + older archived)"
   elif [ "$DB_TYPE" = "postgres" ] && [ -n "$DB_USER" ] && command -v pg_dump >/dev/null 2>&1; then
     BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.sql"
     PGPASSWORD="$DB_PASS" pg_dump -h "$DB_HOST" -U "$DB_USER" "$DB_NAME" \
-      > "$BK_FILE" 2>>"$LOG" \
-      && ls -1t "$BK_DIR"/*.sql 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f 2>/dev/null
-    log "DB backup: $BK_FILE (last $KEEP kept)"
+      > "$BK_FILE" 2>>"$LOG"
+    archive_old_backups
+    log "DB backup: $BK_FILE (last $KEEP fresh + older archived)"
   elif [ "$DB_TYPE" = "sqlite" ] && [ -f "$APP_DIR/$DB_NAME" ]; then
     BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.db"
-    cp "$APP_DIR/$DB_NAME" "$BK_FILE" 2>>"$LOG" \
-      && ls -1t "$BK_DIR"/*.db 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f 2>/dev/null
-    log "DB backup (sqlite): $BK_FILE (last $KEEP kept)"
+    cp "$APP_DIR/$DB_NAME" "$BK_FILE" 2>>"$LOG"
+    archive_old_backups
+    log "DB backup (sqlite): $BK_FILE (last $KEEP fresh + older archived)"
   fi
+
+  # ── Backup archive rotation (USER RULE: NEVER delete — compress instead) ──
+  # Last KEEP dumps stay full-speed (fast restore). Older ones are gzip-
+  # compressed in place (~90% smaller). Compressed archive is capped at KEEP;
+  # beyond that the OLDEST compressed is removed (by then it is extremely old
+  # and double-redundant with the app's own cPanel backups).
+  archive_old_backups() {
+    for _ext in sql db; do
+      for _old in $(ls -1t "$BK_DIR"/*."$_ext" 2>/dev/null | tail -n +$((KEEP+1))); do
+        [ -f "$_old" ] && gzip -f "$_old" 2>/dev/null
+      done
+      ls -1t "$BK_DIR"/*."$_ext".gz 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f 2>/dev/null
+    done
+  }
 
   # ── Backup verification (protect rollback from restoring garbage) ──
   # An empty/corrupt dump means a failed migration CANNOT be rolled back.
