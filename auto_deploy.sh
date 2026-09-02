@@ -220,6 +220,30 @@ fi
 
 # ── 4. DB backup (optional) ─────────────────────────────────
 # sqlite needs no DB_USER — only DB_NAME (file path inside APP_DIR)
+
+# Auto-read DB creds from the app's .env when config.sh leaves them empty.
+# Many frameworks (Django/FastAPI/Laravel/...) already keep DATABASE_URL in
+# .env — no need to duplicate the password in config.sh. Format parsed:
+#   mysql://USER:PASS@HOST/DBNAME   (also postgres://, mysql+pymysql://, etc.)
+if [ "$DB_BACKUP" = "yes" ] && { [ -z "$DB_USER" ] || [ -z "$DB_PASS" ]; }; then
+  ENV_FILE="$APP_DIR/.env"
+  if [ -f "$ENV_FILE" ] && grep -qE '^DATABASE_URL=' "$ENV_FILE" 2>/dev/null; then
+    DB_URL="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | head -1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//')"
+    # strip scheme up to "://"
+    DB_REST="${DB_URL#*://}"
+    # split on LAST @ (host never has @, pass may have it unencoded)
+    DB_USERINFO="${DB_REST%@*}"
+    DB_HOSTPORT="${DB_REST##*@}"
+    case "$DB_USERINFO" in
+      *:*) DB_USER="${DB_USER:-${DB_USERINFO%%:*}}"; DB_PASS="${DB_PASS:-${DB_USERINFO#*:}}" ;;
+      *)   DB_USER="${DB_USER:-$DB_USERINFO}" ;;
+    esac
+    DB_HOST="${DB_HOST:-${DB_HOSTPORT%%/*}}"
+    DB_NAME="${DB_NAME:-${DB_HOSTPORT#*/}}"
+    log "DB creds auto-read from .env (backup)"
+  fi
+fi
+
 if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ]; then
   BK_DIR="$APP_DIR/backups/predeploy"
   mkdir -p "$BK_DIR"

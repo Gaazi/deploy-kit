@@ -491,6 +491,36 @@ REF_FILE_HITS="$(grep -rniE "$REF_PAT" --include='*.sh' --include='*.md' --inclu
 REF_HIST_HITS="$(git log --format='%s%n%b' 2>/dev/null | grep -icE "$REF_PAT")"
 [ "$REF_HIST_HITS" -eq 0 ] && ok "no project references in git history" || bad "project references found in git history ($REF_HIST_HITS)"
 
+echo "== 21. .env auto-read DATABASE_URL =="
+# Test the parsing logic directly (same logic as in auto_deploy.sh)
+mkdir -p "$TMP/envtest"
+# Test 1: password with @ (edge case)
+printf 'DATABASE_URL="mysql://user:P@ss!W0rd@localhost/mydb"\n' > "$TMP/envtest/.env"
+DB_URL="$(grep -E '^DATABASE_URL=' "$TMP/envtest/.env" | head -1 | cut -d= -f2- | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//')"
+DB_REST="${DB_URL#*://}"
+DB_USERINFO="${DB_REST%@*}"
+DB_HOSTPORT="${DB_REST##*@}"
+case "$DB_USERINFO" in
+  *:*) U="${DB_USERINFO%%:*}"; P="${DB_USERINFO#*:}" ;;
+  *)   U="$DB_USERINFO"; P="" ;;
+esac
+H="${DB_HOSTPORT%%/*}"
+D="${DB_HOSTPORT#*/}"
+[ "$U" = "user" ] && [ "$P" = "P@ss!W0rd" ] && [ "$H" = "localhost" ] && [ "$D" = "mydb" ] && ok "env parse: password with @ (edge)" || bad "env parse: password with @ (edge)"
+# Test 2: no password
+printf 'DATABASE_URL="mysql://user@localhost/db"\n' > "$TMP/envtest/.env"
+DB_URL="$(grep -E '^DATABASE_URL=' "$TMP/envtest/.env" | head -1 | cut -d= -f2- | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//')"
+DB_REST="${DB_URL#*://}"
+DB_USERINFO="${DB_REST%@*}"
+DB_HOSTPORT="${DB_REST##*@}"
+case "$DB_USERINFO" in
+  *:*) U="${DB_USERINFO%%:*}"; P="${DB_USERINFO#*:}" ;;
+  *)   U="$DB_USERINFO"; P="" ;;
+esac
+H="${DB_HOSTPORT%%/*}"
+D="${DB_HOSTPORT#*/}"
+[ "$U" = "user" ] && [ -z "$P" ] && [ "$H" = "localhost" ] && [ "$D" = "db" ] && ok "env parse: no password" || bad "env parse: no password"
+
 echo ""
 echo "============================================="
 echo "  PASS: $PASS   FAIL: $FAIL"
