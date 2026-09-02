@@ -43,7 +43,7 @@
 | `DB_USER` / `DB_PASS` | DB credentials (not for sqlite). If empty, auto-read from app's `.env` DATABASE_URL (mysql://user:pass@host/db) so the password isn't duplicated | — |
 | `DB_NAME` | DB name (sqlite: file path inside APP_DIR) | `myapp_db` |
 
-Backup behavior: dumps to `$APP_DIR/backups/predeploy/`, keeps `DB_BACKUP_KEEP` (default 7), `--single-transaction` for mysql. sqlite = copy of the `.db` file.
+Backup behavior: dumps to `$WORKSPACE_BASE/backups/<branch>/` (OUTSIDE the app dir — web-safe), keeps `DB_BACKUP_KEEP` (default 7), `--single-transaction` for mysql. sqlite = copy of the `.db` file.
 
 Backup verification: every dump is validated (non-empty + correct signature — `MySQL dump` / `PostgreSQL database dump` / `SQLite format 3`). If the backup is empty/invalid AND `MIGRATE_CMD` is set, the deploy ABORTS before migrating (a failed migration with a broken backup would make rollback impossible = data loss). Without a migration, it warns and continues.
 

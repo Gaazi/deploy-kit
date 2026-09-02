@@ -289,7 +289,7 @@ if [ "$DB_BACKUP" = "yes" ] && { [ -z "$DB_USER" ] || [ -z "$DB_PASS" ]; }; then
 fi
 
 if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ]; then
-  BK_DIR="$APP_DIR/backups/predeploy"
+  BK_DIR="$WORKSPACE_BASE/backups/$BRANCH"   # OUTSIDE app dir — not web-accessible, keeps app dir light
   mkdir -p "$BK_DIR"
   TS="$(date +%Y%m%d_%H%M%S)"
   KEEP="${DB_BACKUP_KEEP:-7}"   # how many old dumps to keep (lighter disk = smaller number)
