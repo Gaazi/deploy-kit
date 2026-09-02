@@ -45,6 +45,12 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 4. **No heavy dependencies** — pure bash + git + rsync + curl. No Docker requirement, no daemon, no root. Must work on shared hosting.
 5. **Extend, don't rewrite** — keep existing scripts compatible (setup.sh, setup-quick.sh, config.example.sh).
 6. **Test before commit** — `bash -n` every script, and run a quick smoke test if logic changed.
+7. **ZERO PROJECT REFERENCES — EVERYWHERE, ALWAYS.** This kit is public. Real project names (e.g. DMS, LQP, Quran, esabaq, ilm) must NEVER appear in: files, README/docs, `.agents/` (MEMORY/references), commit message subjects OR bodies, branch names, or anywhere in git history. The history has already been rewritten once — any new reference forces another filter-branch rewrite + force push (disruptive). **Before every commit, run:**
+   ```bash
+   grep -rniE 'dms|esabaq|darul|ilm\.|lqp|learn quran|learn_quran' --include='*.sh' --include='*.md' --include='*.yml*' --include='*.example' . | grep -v '.git/' && echo "STOP — references found" 
+   git log --format='%s%n%b' | grep -iE 'dms|esabaq|darul|ilm\.|lqp|learn quran|learn_quran' && echo "STOP — history refs found"
+   ```
+   If anything prints, FIX IT before committing. When describing a lesson learned from a real deployment, write generic phrases only ("a real deployment", "one user's server") — never the project name.
 
 ---
 
