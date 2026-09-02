@@ -40,7 +40,7 @@
 | `DB_BACKUP_KEEP` | How many old dumps to keep — lighter disk = smaller | `7` |
 | `DB_TYPE` | mysql \| postgres \| sqlite | `mysql` |
 | `DB_HOST` | DB host (not for sqlite) | `localhost` |
-| `DB_USER` / `DB_PASS` | DB credentials (not for sqlite) | — |
+| `DB_USER` / `DB_PASS` | DB credentials (not for sqlite). If empty, auto-read from app's `.env` DATABASE_URL (mysql://user:pass@host/db) so the password isn't duplicated | — |
 | `DB_NAME` | DB name (sqlite: file path inside APP_DIR) | `myapp_db` |
 
 Backup behavior: dumps to `$APP_DIR/backups/predeploy/`, keeps `DB_BACKUP_KEEP` (default 7), `--single-transaction` for mysql. sqlite = copy of the `.db` file.
