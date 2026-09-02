@@ -413,7 +413,11 @@ if [ "$1" = "-l" ]; then
   [ -f "$STORE" ] && cat "$STORE" || true
   exit 0
 fi
-cat > "$STORE"
+# buffer stdin BEFORE touching the file — the writer and the `crontab -l`
+# reader start at once in the pipeline; `cat > "$STORE"` would truncate
+# the store before -l could read it (fake-crontab race, not a cron.sh bug)
+NEW="$(cat)"
+printf '%s\n' "$NEW" > "$STORE"
 CFAKE
 chmod +x "$TMP/cronbin/crontab"
 cp cron.sh "$TMP/"
@@ -424,6 +428,13 @@ N="$(grep -c "auto_deploy.sh" "$CRONSTORE" 2>/dev/null || echo 0)"
 [ "$N" = "1" ] && ok "cron.sh: re-install replaces old line (no duplicates)" || bad "cron.sh: re-install replaces old line (no duplicates) — got $N lines"
 grep -q '\*/5' "$CRONSTORE" && ok "cron.sh: latest interval kept" || bad "cron.sh: latest interval kept"
 grep -q "DEPLOY_TRIGGER=cron" "$CRONSTORE" && ok "cron.sh: line marks DEPLOY_TRIGGER=cron" || bad "cron.sh: line marks DEPLOY_TRIGGER=cron"
+# old-kit edge: an UNQUOTED legacy line (auto_deploy.sh main) must also be replaced,
+# while an unrelated branch line (dev) must survive
+printf "%s\n" "/bin/bash /tmp/kit/auto_deploy.sh main >> /tmp/d.log 2>&1" "*/3 * * * * /bin/bash '/tmp/kit/auto_deploy.sh' 'dev' >> '/tmp/d.log' 2>&1" > "$CRONSTORE"
+( cd "$TMP" && PATH="$TMP/cronbin:$PATH" HOME="$TMP/cronhome" bash cron.sh 4 main >/dev/null 2>&1 )
+grep -q "auto_deploy.sh main " "$CRONSTORE" && bad "cron.sh: legacy unquoted line removed" || ok "cron.sh: legacy unquoted line removed"
+grep -q "'dev'" "$CRONSTORE" && ok "cron.sh: other-branch line untouched" || bad "cron.sh: other-branch line untouched"
+[ "$(grep -c "auto_deploy.sh' 'main" "$CRONSTORE")" = "1" ] && ok "cron.sh: exactly one new main line" || bad "cron.sh: exactly one new main line"
 
 echo "== 17. toggle flag skips ONLY cron deploys =="
 mkdir -p "$TMP/toggle-kit"
