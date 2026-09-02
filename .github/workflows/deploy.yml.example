@@ -49,13 +49,19 @@ jobs:
         run: |
           DEPLOY_PATH="${SERVER_DEPLOY_PATH:-~/deploy-kit/auto_deploy.sh}"
           KIT_DIR="$(dirname "$DEPLOY_PATH")"
+          case "$SSH_PORT" in ''|*[!0-9]*) SSH_PORT=22;; esac   # numeric only — no arg injection
           echo "$SSH_PRIVATE_KEY" > /tmp/dk
           chmod 600 /tmp/dk
           SSH_CMD="ssh -i /tmp/dk -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes -p $SSH_PORT"
           # If the kit is not on the server yet, clone it from the public repo.
           # HTTPS clone — the kit repo is public, no SSH key needed on the server.
-          $SSH_CMD "$SERVER_USER@$SERVER_HOST" "test -f '$DEPLOY_PATH'" 2>/dev/null || \
-            $SSH_CMD "$SERVER_USER@$SERVER_HOST" "git clone --depth=1 https://github.com/Gaazi/deploy-kit.git '$KIT_DIR' && cp '$KIT_DIR/config.example.sh' '$KIT_DIR/config.sh'" 2>&1
+          # NOTE: paths are UNQUOTED in the remote command so the remote shell
+          # expands a leading ~ (single quotes would block tilde expansion).
+          $SSH_CMD "$SERVER_USER@$SERVER_HOST" "test -f $DEPLOY_PATH" 2>/dev/null \
+            || $SSH_CMD "$SERVER_USER@$SERVER_HOST" "git clone --depth=1 https://github.com/Gaazi/deploy-kit.git $KIT_DIR && cp $KIT_DIR/config.example.sh $KIT_DIR/config.sh" 2>&1
+          # verify (also covers a lost clone race: another run may have installed it)
+          $SSH_CMD "$SERVER_USER@$SERVER_HOST" "test -f $DEPLOY_PATH" \
+            || { echo "❌ Bootstrap failed — kit not found at $DEPLOY_PATH after clone attempt"; exit 1; }
           echo "✅ Kit ready at $DEPLOY_PATH"
 
       - name: Fire deploy on the server
@@ -68,6 +74,7 @@ jobs:
           BRANCH: ${{ github.ref_name }}
         run: |
           DEPLOY_PATH="${SERVER_DEPLOY_PATH:-~/deploy-kit/auto_deploy.sh}"
+          case "$SSH_PORT" in ''|*[!0-9]*) SSH_PORT=22;; esac   # numeric only — no arg injection
           BRANCH="$(printf '%s' "$BRANCH" | tr -cd 'A-Za-z0-9._/-')"
           [ -n "$BRANCH" ] || { echo "❌ Empty/invalid branch name"; exit 1; }
           echo "$SSH_PRIVATE_KEY" > /tmp/dk
