@@ -37,6 +37,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
+      - name: Bootstrap deploy-kit on server (auto-install if missing)
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
+          SERVER_DEPLOY_PATH: ${{ secrets.SERVER_DEPLOY_PATH }}
+        run: |
+          DEPLOY_PATH="${SERVER_DEPLOY_PATH:-~/deploy-kit/auto_deploy.sh}"
+          KIT_DIR="$(dirname "$DEPLOY_PATH")"
+          echo "$SSH_PRIVATE_KEY" > /tmp/dk
+          chmod 600 /tmp/dk
+          SSH_CMD="ssh -i /tmp/dk -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes -p $SSH_PORT"
+          # If the kit is not on the server yet, clone it from the public repo.
+          # HTTPS clone — the kit repo is public, no SSH key needed on the server.
+          $SSH_CMD "$SERVER_USER@$SERVER_HOST" "test -f '$DEPLOY_PATH'" 2>/dev/null || \
+            $SSH_CMD "$SERVER_USER@$SERVER_HOST" "git clone --depth=1 https://github.com/Gaazi/deploy-kit.git '$KIT_DIR' && cp '$KIT_DIR/config.example.sh' '$KIT_DIR/config.sh'" 2>&1
+          echo "✅ Kit ready at $DEPLOY_PATH"
+
       - name: Fire deploy on the server
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -47,8 +66,6 @@ jobs:
           BRANCH: ${{ github.ref_name }}
         run: |
           DEPLOY_PATH="${SERVER_DEPLOY_PATH:-~/deploy-kit/auto_deploy.sh}"
-          # sanitize branch name before it reaches the remote shell
-          # (a branch like x'; <cmd>; would break out of the quoted arg)
           BRANCH="$(printf '%s' "$BRANCH" | tr -cd 'A-Za-z0-9._/-')"
           [ -n "$BRANCH" ] || { echo "❌ Empty/invalid branch name"; exit 1; }
           echo "$SSH_PRIVATE_KEY" > /tmp/dk
