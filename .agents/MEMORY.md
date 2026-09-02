@@ -11,7 +11,8 @@
 - **Resource budget (GitHub):** hosted ~1 min/deploy · native webhook 0 · cron 0 · self-hosted 0 · docs push 0 (paths-ignore)
 - **Resource budget (server):** `--single-branch` clone · SHA-skip instant · log 1MB rotation · DB_BACKUP_KEEP · deploy lock · optional steps only when configured
 - **Required config:** only `REPO_URL` + `APP_DIR`. Everything else optional — empty = skip, never crash.
-- **Test:** `/bin/bash test.sh` — 59 checks, run before committing. CI runs it on every push to main.
+- **Test:** `/bin/bash test.sh` — 59 core checks + 4 META (consistency) checks, run before committing. CI runs it on every push to main.
+- **Section 22 (META counters):** auto-verifies test.yml count == core PASS, and AGENTS.md/README.md file counts == actual tracked files. Uses `META_PASS`/`META_FAIL` (NOT `PASS`) so it never inflates the core count. If you add a test/file, you MUST update test.yml (count), AGENTS.md, README.md — Section 22 will fail CI until it matches. Never drift silently.
 - **Deploy flow:** git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health → notifications (Telegram/Discord/Slack/Email)
 
 ## File map (what each script does)

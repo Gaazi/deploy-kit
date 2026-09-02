@@ -521,14 +521,40 @@ H="${DB_HOSTPORT%%/*}"
 D="${DB_HOSTPORT#*/}"
 [ "$U" = "user" ] && [ -z "$P" ] && [ "$H" = "localhost" ] && [ "$D" = "db" ] && ok "env parse: no password" || bad "env parse: no password"
 
+echo "== 22. Doc/CI count consistency (never drifts silently) =="
+# The counts in test.yml, AGENTS.md and README.md must match reality.
+# Section 22 uses META counters (not PASS) so it never inflates the core
+# check count — test.yml stays the "core" number and stays stable.
+# If any mismatch: CI fails and tells you exactly which file to fix.
+META_PASS=0; META_FAIL=0
+meta_ok()  { echo "  ✅ $1"; META_PASS=$((META_PASS+1)); }
+meta_bad() { echo "  ❌ $1"; META_FAIL=$((META_FAIL+1)); }
+
+# (a) test.yml declared count == core PASS count (excludes this section)
+_DECL="$(grep -oE '\([0-9]+ checks\)' .github/workflows/test.yml | grep -oE '[0-9]+' | head -1)"
+[ "$PASS" = "$_DECL" ] && meta_ok "test.yml check count ($_DECL) matches core PASS" || meta_bad "test.yml says $_DECL checks but core ran $PASS — update test.yml"
+
+# (b) AGENTS.md file-structure count == actual tracked top-level files
+_ACT="$(git ls-files | grep -v '.agents/' | wc -l | tr -d ' ')"
+_AG="$(grep -oE 'File Structure \([0-9]+' AGENTS.md | grep -oE '[0-9]+')"
+[ "$_ACT" = "$_AG" ] && meta_ok "AGENTS.md file count ($_AG) matches reality" || meta_bad "AGENTS.md says $_AG files but reality $_ACT"
+
+# (c) README.md files-table count == actual tracked top-level files
+_RD="$(grep -oE 'Files \([0-9]+' README.md | grep -oE '[0-9]+')"
+[ "$_ACT" = "$_RD" ] && meta_ok "README.md file count ($_RD) matches reality" || meta_bad "README.md says $_RD files but reality $_ACT"
+
+# (d) README.md checklist file count == actual
+_RC="$(grep -oE '\([0-9]+ files\)' README.md | grep -oE '[0-9]+' | head -1)"
+[ "$_ACT" = "$_RC" ] && meta_ok "README checklist ($_RC files) matches reality" || meta_bad "README checklist says $_RC files but reality $_ACT"
+
 echo ""
 echo "============================================="
-echo "  PASS: $PASS   FAIL: $FAIL"
+echo "  PASS: $PASS   FAIL: $FAIL   (META: $META_PASS ok / $META_FAIL bad)"
 echo "============================================="
-if [ "$FAIL" -eq 0 ]; then
+if [ "$FAIL" -eq 0 ] && [ "$META_FAIL" -eq 0 ]; then
   echo "✅ All tests passed"
   exit 0
 else
-  echo "❌ $FAIL test(s) failed"
+  echo "❌ $FAIL core + $META_FAIL consistency check(s) failed"
   exit 1
 fi
