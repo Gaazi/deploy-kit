@@ -54,6 +54,25 @@ if [ -z "$REPO_URL" ] || [ -z "$APP_DIR" ]; then
   exit 1
 fi
 
+# ── Placeholder check (clear error, not a confusing git failure) ─
+# If config.sh was copied from config.example.sh but not filled in, catch it
+# early — otherwise the user sees "Branch not found" or SSH key errors that
+# point the wrong way.
+case "$REPO_URL" in
+  *YOUR_USER*|*your_user*|*example*|*user/repo*) 
+    echo "❌ config.sh still has PLACEHOLDER values — edit it and put your real values:"
+    echo "   REPO_URL is: $REPO_URL"
+    echo "   It should be: git@github.com:YOU/your-repo.git"
+    echo "   First time? Run: /bin/bash setup.sh  (or edit config.sh directly)"
+    exit 1 ;;
+esac
+case "$APP_DIR" in
+  *your-app*|*your_app*) 
+    echo "❌ config.sh APP_DIR looks like a placeholder — set your real app folder path:"
+    echo "   APP_DIR is: $APP_DIR"
+    exit 1 ;;
+esac
+
 log() { echo "$NOW: $1" >> "$LOG"; }
 
 # ── Optional self-update of the kit itself (safe: config.sh is gitignored) ──
@@ -156,8 +175,18 @@ fi
 
 # Safety guard: abort if the branch is missing on the remote (clone/fetch failed).
 # Never rsync --delete from a broken workspace — it would wipe the app.
+# Distinguish SSH key error from branch-missing — the user can't fix the
+# wrong error if we blame the branch when it's really a key problem.
 if ! git -C "$WORKSPACE" rev-parse --verify -q "origin/$BRANCH" >/dev/null 2>&1; then
-  echo "❌ Branch '$BRANCH' not found on remote ($REPO_URL) — deploy aborted, app untouched" | tee -a "$LOG"
+  _git_err="$(tail -5 "$LOG" 2>/dev/null | grep -iE 'permission denied|publickey|repository not found|not found|does not appear' | head -1)"
+  echo "❌ git remote error — deploy aborted, app untouched" | tee -a "$LOG"
+  if [ -n "$_git_err" ]; then
+    echo "   $REPO_URL: $_git_err" | tee -a "$LOG"
+    echo "   (Check: SSH key added to GitHub? DEPLOY_KEY path correct? Repo URL correct?)" | tee -a "$LOG"
+  else
+    echo "   Branch '$BRANCH' not found on remote ($REPO_URL)" | tee -a "$LOG"
+    echo "   (Check: branch name spelled correctly? git push --set-upstream?)" | tee -a "$LOG"
+  fi
   exit 1
 fi
 

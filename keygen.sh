@@ -17,6 +17,27 @@ CONFIG_FILE="${SCRIPT_DIR}/config.sh"
 KEY="${DEPLOY_KEY:-$HOME/.ssh/deploy_key}"
 mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh" 2>/dev/null
 
+# ── 0. Reuse a key that ALREADY works (before creating a new one) ──
+# If config.sh has REPO_URL, probe existing keys in ~/.ssh against it.
+# An already-authorized key (from an earlier setup) should be reused —
+# creating a new key would need a fresh GitHub add. This is what a
+# first-time user misses when a working key already exists.
+if [ -z "${DEPLOY_KEY:-}" ] && [ -n "$REPO_URL" ]; then
+  for candidate in "$HOME"/.ssh/*; do
+    case "$candidate" in
+      *.pub|*authorized_keys*|*known_hosts*) continue ;;
+    esac
+    [ -f "$candidate" ] || continue
+    if GIT_SSH_COMMAND="ssh -i \"$candidate\" -o StrictHostKeyChecking=no -o ConnectTimeout=8" \
+       git ls-remote "$REPO_URL" HEAD >/dev/null 2>&1; then
+      echo "✅ Found an ALREADY-WORKING key: $candidate"
+      echo "   Reusing it — no need to create a new one or add it to GitHub."
+      KEY="$candidate"
+      break
+    fi
+  done
+fi
+
 # ── 1. Create / reuse the key ────────────────────
 if [ ! -f "$KEY" ]; then
   echo "🔑 Creating new SSH key (ed25519)..."
