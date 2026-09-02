@@ -76,7 +76,7 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 
 ---
 
-## 📁 Files (23 + .agents/)
+## 📁 Files (24 + .agents/)
 
 | File | What it does |
 |------|---------------|
@@ -86,6 +86,7 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 | `setup-quick.sh` | **Paste setup** — paste all your values at once, no questions |
 | `doctor.sh` | **Preflight doctor** — diagnose server environment, tools, permissions, and config |
 | `keygen.sh` | **SSH key helper** — creates the key + prints 3 ready-to-copy blocks for GitHub (~2 min) |
+| `db-dump.py` | **Python MySQL backup/restore** — works without mysqldump (shared hosting). Reads `DATABASE_URL` from the app's `.env` |
 | `detect.sh` | **Fully dynamic** — reads your repo and auto-sets APP_TYPE / build / migrate / restart by itself |
 | `cron.sh` | **Zero GitHub Actions** — one command installs a cron job: deploy every N min, 0 Actions minutes |
 | `runner.sh` | **~6s deploys (VPS)** — installs a self-hosted GitHub runner on the server: no VM boot, 0 Actions minutes |
@@ -134,7 +135,7 @@ mkdir -p ~/deploy-kit
 
 # Option C — download directly on the server:
 cd ~/deploy-kit
-for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh detect.sh cron.sh test.sh config.example.sh; do
+for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh detect.sh cron.sh test.sh db-dump.py config.example.sh; do
   curl -fsSL -o "$f" "https://raw.githubusercontent.com/YOUR_USER/deploy-kit/main/$f"
 done
 chmod +x *.sh
@@ -195,6 +196,7 @@ nano config.sh
 | `HEALTH_WAIT` | Seconds to wait after restart before checking | Number | `8` |
 | `HEALTH_RETRY` | How many times to retry health check | Number | `3` |
 | `AUTO_ROLLBACK_ON_FAIL` | Auto-rollback if health check fails | yes/no | `yes` |
+| `RESTORE_ON_FAIL` | Restore DB from THIS deploy's backup if migration fails | yes/no | `no` |
 | `DEPLOY_KEY` | Path to the GitHub deploy key | Key file | `/home/cpuser/.ssh/deploy_key` |
 | `WORKSPACE_BASE` | Where the git workspace lives | Path | `/home/cpuser/deploy-workspace` |
 | `TOGGLE_FLAG` / `SKIP_WHEN_FLAG` | Toggle system (optional) | Flag path + `1` | — |
@@ -605,7 +607,7 @@ README.md
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (23 files) — **or skip: the hosted workflow bootstraps it on first push**
+- [ ] `~/deploy-kit/` on the server (24 files) — **or skip: the hosted workflow bootstraps it on first push**
 - [ ] Created `config.sh` (wizard: `/bin/bash setup.sh`)
 - [ ] `chmod +x *.sh`
 - [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅

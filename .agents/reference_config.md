@@ -71,6 +71,7 @@ Webhook listener: `webhook.sh start|stop|status`. Needs socat (VPS only).
 | `HEALTH_WAIT` | Seconds to sleep after restart before checking — `""` = 8. |
 | `HEALTH_RETRY` | How many times to retry health check (app may need a moment) — `""` = 3. |
 | `AUTO_ROLLBACK_ON_FAIL` | `yes` \| `no` — automatically rollback to previous working commit if health check fails |
+| `RESTORE_ON_FAIL` | `yes` → if migration FAILS, auto-restore DB from THIS deploy's verified backup (never stale backups; no backup = alert only, never touches DB) | `no` |
 
 ## Git / Advanced (optional)
 | Key | What | Default |

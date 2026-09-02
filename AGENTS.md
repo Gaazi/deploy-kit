@@ -84,7 +84,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 
 ---
 
-## File Structure (23 files + .agents/)
+## File Structure (24 files + .agents/)
 
 | File | Purpose |
 |------|---------|
@@ -95,6 +95,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 | `setup.sh` | Beginner YES/NO setup wizard (Enter = recommended, creates config.sh, auto-runs keygen.sh at end) |
 | `setup-quick.sh` | Paste setup (KEY=VALUE lines, Ctrl+D, no questions) |
 | `keygen.sh` | SSH key helper — one key pair both ways + 3 copy-paste blocks for GitHub |
+| `db-dump.py` | Python MySQL backup/restore (no mysqldump needed) — shared-hosting fallback, reads DATABASE_URL from .env |
 | `detect.sh` | **Fully dynamic** — reads your repo, auto-detects APP_TYPE/BUILD/MIGRATE/RESTART |
 | `cron.sh` | **Zero GitHub Actions** — install cron job, deploy every N min, 0 Actions minutes |
 | `runner.sh` | **~6s deploys (VPS)** — install a self-hosted GitHub runner: no VM boot, 0 Actions minutes |
