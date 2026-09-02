@@ -45,6 +45,8 @@
 
 Backup behavior: dumps to `$APP_DIR/backups/predeploy/`, keeps `DB_BACKUP_KEEP` (default 7), `--single-transaction` for mysql. sqlite = copy of the `.db` file.
 
+Backup verification: every dump is validated (non-empty + correct signature — `MySQL dump` / `PostgreSQL database dump` / `SQLite format 3`). If the backup is empty/invalid AND `MIGRATE_CMD` is set, the deploy ABORTS before migrating (a failed migration with a broken backup would make rollback impossible = data loss). Without a migration, it warns and continues.
+
 ## Notifications (optional — multi-channel alerts)
 | Key | What |
 |-----|------|
