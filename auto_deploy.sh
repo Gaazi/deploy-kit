@@ -68,6 +68,15 @@ if [ -z "$REPO_URL" ] || [ -z "$APP_DIR" ]; then
   exit 1
 fi
 
+# ── Pre-flight: fail fast BEFORE touching anything ─────────
+# Light checks (~1s): disk space for workspace+backups. Full diagnostics
+# live in doctor.sh — this is just the deploy-blocking minimum.
+_avail_kb="$(df -Pk "$(dirname "$WORKSPACE_BASE")" 2>/dev/null | awk 'NR==2{print $4}' | head -1)"
+if [ -n "$_avail_kb" ] && [ "$_avail_kb" -lt 51200 ]; then
+  echo "❌ Low disk space — only ${_avail_kb}KB free on $(dirname "$WORKSPACE_BASE"). Free space or deploy will fail mid-way."
+  exit 1
+fi
+
 # ── Placeholder check (clear error, not a confusing git failure) ─
 # If config.sh was copied from config.example.sh but not filled in, catch it
 # early — otherwise the user sees "Branch not found" or SSH key errors that
@@ -295,12 +304,25 @@ if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ]; then
   KEEP="${DB_BACKUP_KEEP:-7}"   # how many old dumps to keep (lighter disk = smaller number)
   case "$KEEP" in ''|*[!0-9]*) KEEP=7;; esac   # safety: non-numeric → default 7
   [ "$KEEP" -lt 1 ] && KEEP=1                  # safety: 0 would delete ALL backups
-  if [ "$DB_TYPE" = "mysql" ] && [ -n "$DB_USER" ] && command -v mysqldump >/dev/null 2>&1; then
-    BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.sql"
-    MYSQL_PWD="$DB_PASS" mysqldump -h "$DB_HOST" -u "$DB_USER" --single-transaction "$DB_NAME" \
-      > "$BK_FILE" 2>>"$LOG"
+  if [ "$DB_TYPE" = "mysql" ]; then
+    if command -v mysqldump >/dev/null 2>&1; then
+      BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.sql"
+      MYSQL_PWD="$DB_PASS" mysqldump -h "$DB_HOST" -u "$DB_USER" --single-transaction "$DB_NAME" \
+        > "$BK_FILE" 2>>"$LOG"
+    else
+      # ── Python fallback (shared hosting: no mysqldump) ──
+      # Uses the app's own venv python + pymysql + DATABASE_URL from .env.
+      BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.sql"
+      _PYX="${PYTHON_BIN:-python3}"
+      if [ -f "$APP_DIR/.env" ] && [ -f "$SCRIPT_DIR/db-dump.py" ] && command -v "$_PYX" >/dev/null 2>&1; then
+        "$_PYX" "$SCRIPT_DIR/db-dump.py" dump "$APP_DIR/.env" "$BK_FILE" >> "$LOG" 2>&1 \
+          || log "python backup FAILED (see log)"
+      else
+        log "DB backup skipped — no mysqldump, no python fallback (.env/db-dump.py missing)"
+      fi
+    fi
     archive_old_backups
-    log "DB backup: $BK_FILE (last $KEEP fresh + older archived)"
+    log "DB backup: ${BK_FILE:-none} (last $KEEP fresh + older archived)"
   elif [ "$DB_TYPE" = "postgres" ] && [ -n "$DB_USER" ] && command -v pg_dump >/dev/null 2>&1; then
     BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.sql"
     PGPASSWORD="$DB_PASS" pg_dump -h "$DB_HOST" -U "$DB_USER" "$DB_NAME" \
@@ -360,7 +382,26 @@ fi
 # ── 5. Migrate (if configured) ──────────────────────────────
 if [ -n "$MIGRATE_CMD" ]; then
   log "Running migrate: $MIGRATE_CMD"
+  MIGRATE_RESULT="ok"
   if ! (cd "$APP_DIR" && eval "$MIGRATE_CMD") >> "$LOG" 2>&1; then
+    MIGRATE_RESULT="FAIL"
+    # ── RESTORE_ON_FAIL: auto-restore DB from THIS deploy's verified backup ──
+    # USER RULE: restore ONLY from this deploy's own backup — never stale/old backups.
+    # Migration adhoori fail ho to DB half-migrated reh jata hai (MySQL DDL
+    # rollback nahi hota) — isliye verified backup se restore karo.
+    if [ "${RESTORE_ON_FAIL:-no}" = "yes" ] && [ -s "${BK_FILE:-}" ]; then
+      _PYX="${PYTHON_BIN:-python3}"
+      log "RESTORE_ON_FAIL — restoring DB from $BK_FILE"
+      if [ "$DB_TYPE" = "mysql" ] && command -v mysql >/dev/null 2>&1; then
+        MYSQL_PWD="$DB_PASS" mysql -h "$DB_HOST" -u "$DB_USER" "$DB_NAME" < "$BK_FILE" >> "$LOG" 2>&1 \
+          && log "DB restored from this deploy's backup" || log "DB restore FAILED"
+      elif [ -f "$SCRIPT_DIR/db-dump.py" ]; then
+        "$_PYX" "$SCRIPT_DIR/db-dump.py" restore "$APP_DIR/.env" "$BK_FILE" >> "$LOG" 2>&1 \
+          && log "DB restored from this deploy's backup (python)" || log "DB restore FAILED"
+      fi
+      notify "🔄 <b>Deploy FAILED (Migrate) — DB AUTO-RESTORED</b> ($SITE_DOMAIN · $BRANCH)
+DB restored from this deploy's backup. Fix migration, push again." "Migrate FAIL — DB auto-restored: $SITE_DOMAIN ($BRANCH)"
+    fi
     notify "❌ <b>Deploy FAILED (Migrate)</b> ($SITE_DOMAIN · $BRANCH) — migrate failed
 <code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
 Check server log: $LOG" "Deploy Migration FAILED: $SITE_DOMAIN ($BRANCH)"
@@ -407,6 +448,7 @@ if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
     [ "$i" -le "$RETRY" ] && sleep 5
   done
   if [ "$OK" -eq 1 ]; then
+    HEALTH_RESULT="ok"
     rm -f "$WORKSPACE/.failed_sha" 2>/dev/null   # deploy succeeded — clear failed marker
     notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH) — health OK
 <code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
@@ -414,6 +456,7 @@ if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
 ⏱️ Time: ${DEPLOY_DURATION}s" "Deploy Successful: $SITE_DOMAIN ($BRANCH)"
     log "Health OK"
   else
+    HEALTH_RESULT="FAIL"
     log "Health FAILED"
     if [ "${AUTO_ROLLBACK_ON_FAIL:-no}" = "yes" ] || [ "${AUTO_ROLLBACK_ON_FAIL:-false}" = "true" ] || [ "${AUTO_ROLLBACK_ON_FAIL:-0}" = "1" ]; then
       PREV_SHA="$(cat "$WORKSPACE/.previous_sha" 2>/dev/null || echo '')"
@@ -450,3 +493,14 @@ fi
 
 echo "✅ Deploy complete: $BRANCH @ ${NEW_SHA:0:10} (${DEPLOY_DURATION}s)"
 [ "${AUTO_ROLLED_BACK:-0}" = "1" ] && echo "⚠️ Note: health failed — auto-rolled back to previous version. Fix the code and push again." || true
+
+# ── Deploy history (audit trail — one line per deploy, keeps 90 deploys) ──
+HIST="$WORKSPACE_BASE/deploy-history.md"
+{ [ -f "$HIST" ] || echo "| When | Branch | SHA | Dur | Backup | Migrate | Health |" > "$HIST"
+  echo "| $(date '+%F %T') | $BRANCH | ${NEW_SHA:0:10} | ${DEPLOY_DURATION}s | ${BK_VERDICT:-skip} | ${MIGRATE_RESULT:-skip} | ${HEALTH_RESULT:-skip} |" >> "$HIST"
+} 2>/dev/null
+# cap history at 90 lines (keep header)
+_HL="$(wc -l < "$HIST" 2>/dev/null || echo 0)"
+if [ "$_HL" -gt 92 ]; then
+  { head -1 "$HIST"; tail -n 90 "$HIST"; } > "$HIST.tmp" 2>/dev/null && mv "$HIST.tmp" "$HIST" 2>/dev/null
+fi

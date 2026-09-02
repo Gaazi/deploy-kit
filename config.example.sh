@@ -57,6 +57,7 @@ HEALTH_URL=""                         # e.g. https://your-domain.com/health — 
 HEALTH_WAIT="8"                       # seconds to wait after restart before checking
 HEALTH_RETRY="3"                      # how many times to retry (app may need a moment)
 AUTO_ROLLBACK_ON_FAIL="no"            # yes | no — auto-rollback to previous commit if health check fails
+RESTORE_ON_FAIL="no"                  # yes — migrate fail ho to ISI deploy ke backup se DB auto-restore
 
 # ── Git ─────────────────────────────────────────────────────
 DEPLOY_KEY=""                         # path to SSH deploy key ("" = use default ssh)

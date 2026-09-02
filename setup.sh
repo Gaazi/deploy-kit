@@ -136,6 +136,7 @@ fi
 
 HEALTH_URL=""
 AUTO_ROLLBACK_ON_FAIL="no"
+RESTORE_ON_FAIL="no"
 if yesno "Do you want a health check after deploy? (recommended)" yes; then
   HEALTH_DEFAULT="https://${SITE_DOMAIN:-localhost}/"
   HEALTH_URL=$(ask "Health URL (Enter = $HEALTH_DEFAULT)" "$HEALTH_DEFAULT")
@@ -195,6 +196,7 @@ HEALTH_URL="$(esc "$HEALTH_URL")"
 HEALTH_WAIT="8"
 HEALTH_RETRY="3"
 AUTO_ROLLBACK_ON_FAIL="$(esc "$AUTO_ROLLBACK_ON_FAIL")"
+RESTORE_ON_FAIL="$(esc "$RESTORE_ON_FAIL")"
 
 # ── Git / Advanced ──
 DEPLOY_KEY=""

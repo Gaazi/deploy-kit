@@ -70,6 +70,7 @@ HEALTH_URL=""
 HEALTH_WAIT="8"
 HEALTH_RETRY="3"
 AUTO_ROLLBACK_ON_FAIL="no"
+RESTORE_ON_FAIL="no"
 DEPLOY_KEY=""
 WORKSPACE_BASE="/home/$SERVER_USER/deploy-workspace"
 TOGGLE_FLAG=""
@@ -122,6 +123,7 @@ while IFS='=' read -r key val; do
     HEALTH_WAIT)       HEALTH_WAIT="$val" ;;
     HEALTH_RETRY)      HEALTH_RETRY="$val" ;;
     AUTO_ROLLBACK_ON_FAIL) AUTO_ROLLBACK_ON_FAIL="$val" ;;
+    RESTORE_ON_FAIL)   RESTORE_ON_FAIL="$val" ;;
     DEPLOY_KEY)        DEPLOY_KEY="$val" ;;
     WORKSPACE_BASE)    WORKSPACE_BASE="$val" ;;
     TOGGLE_FLAG)       TOGGLE_FLAG="$val" ;;
@@ -192,6 +194,7 @@ HEALTH_URL="$(esc "$HEALTH_URL")"
 HEALTH_WAIT="$(esc "$HEALTH_WAIT")"
 HEALTH_RETRY="$(esc "$HEALTH_RETRY")"
 AUTO_ROLLBACK_ON_FAIL="$(esc "$AUTO_ROLLBACK_ON_FAIL")"
+RESTORE_ON_FAIL="$(esc "$RESTORE_ON_FAIL")"
 
 # ── Git / Advanced ──
 DEPLOY_KEY="$(esc "$DEPLOY_KEY")"
