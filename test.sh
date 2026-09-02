@@ -521,16 +521,36 @@ H="${DB_HOSTPORT%%/*}"
 D="${DB_HOSTPORT#*/}"
 [ "$U" = "user" ] && [ -z "$P" ] && [ "$H" = "localhost" ] && [ "$D" = "db" ] && ok "env parse: no password" || bad "env parse: no password"
 
-echo "== 22. Doc/CI count consistency (never drifts silently) =="
+echo "== 22. .env fallback for notification keys (auto-read from app .env) =="
+# Same parsing logic as auto_deploy.sh: if a notif key is empty in config.sh,
+# borrow it from the app's .env. config.sh value must WIN (never overwritten).
+mkdir -p "$TMP/envnotif"
+printf 'TELEGRAM_BOT_TOKEN="12345:ABCdef"\nTELEGRAM_CHAT_ID="98765"\nDISCORD_WEBHOOK_URL="https://discord.example/hook"\n' > "$TMP/envnotif/.env"
+ENV_FILE="$TMP/envnotif/.env"
+envget() { grep -E "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//'; }
+# (a) empty config → borrow from .env
+T_BOT=""; T_CHAT=""; D_URL=""; S_URL=""
+[ -z "$T_BOT" ] && T_BOT="$(envget TELEGRAM_BOT_TOKEN)"
+[ -z "$T_CHAT" ] && T_CHAT="$(envget TELEGRAM_CHAT_ID)"
+[ -z "$D_URL" ] && D_URL="$(envget DISCORD_WEBHOOK_URL)"
+[ -z "$S_URL" ] && S_URL="$(envget SLACK_WEBHOOK_URL)"   # not in .env → stays empty
+[ "$T_BOT" = "12345:ABCdef" ] && [ "$T_CHAT" = "98765" ] && [ "$D_URL" = "https://discord.example/hook" ] && [ -z "$S_URL" ] \
+  && ok "env fallback: empty config borrows Telegram/Discord from .env" || bad "env fallback: borrow from .env"
+# (b) config.sh value present → .env must NOT override it
+T_BOT="from-config"
+[ -z "$T_BOT" ] && T_BOT="$(envget TELEGRAM_BOT_TOKEN)"
+[ "$T_BOT" = "from-config" ] && ok "env fallback: config.sh value wins (not overwritten)" || bad "env fallback: config.sh value wins"
+
+echo "== 23. Doc/CI count consistency (never drifts silently) =="
 # The counts in test.yml, AGENTS.md and README.md must match reality.
-# Section 22 uses META counters (not PASS) so it never inflates the core
-# check count — test.yml stays the "core" number and stays stable.
+# META counters (not PASS) keep these self-checks out of the core count —
+# test.yml declares the CORE number and stays stable.
 # If any mismatch: CI fails and tells you exactly which file to fix.
 META_PASS=0; META_FAIL=0
 meta_ok()  { echo "  ✅ $1"; META_PASS=$((META_PASS+1)); }
 meta_bad() { echo "  ❌ $1"; META_FAIL=$((META_FAIL+1)); }
 
-# (a) test.yml declared count == core PASS count (excludes this section)
+# (a) test.yml declared count == core PASS count (all core checks ran above)
 _DECL="$(grep -oE '\([0-9]+ checks\)' .github/workflows/test.yml | grep -oE '[0-9]+' | head -1)"
 [ "$PASS" = "$_DECL" ] && meta_ok "test.yml check count ($_DECL) matches core PASS" || meta_bad "test.yml says $_DECL checks but core ran $PASS — update test.yml"
 

@@ -11,7 +11,7 @@
 - **Resource budget (GitHub):** hosted ~1 min/deploy · native webhook 0 · cron 0 · self-hosted 0 · docs push 0 (paths-ignore)
 - **Resource budget (server):** `--single-branch` clone · SHA-skip instant · log 1MB rotation · DB_BACKUP_KEEP · deploy lock · optional steps only when configured
 - **Required config:** only `REPO_URL` + `APP_DIR`. Everything else optional — empty = skip, never crash.
-- **Test:** `/bin/bash test.sh` — 59 core checks + 4 META (consistency) checks, run before committing. CI runs it on every push to main.
+- **Test:** `/bin/bash test.sh` — 61 core checks + 4 META (consistency) checks, run before committing. CI runs it on every push to main.
 - **Section 22 (META counters):** auto-verifies test.yml count == core PASS, and AGENTS.md/README.md file counts == actual tracked files. Uses `META_PASS`/`META_FAIL` (NOT `PASS`) so it never inflates the core count. If you add a test/file, you MUST update test.yml (count), AGENTS.md, README.md — Section 22 will fail CI until it matches. Never drift silently.
 - **Deploy flow:** git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health → notifications (Telegram/Discord/Slack/Email)
 
@@ -125,3 +125,4 @@
 - **cron dedup legacy format (2026-09-02):** older cron.sh versions wrote UNQUOTED lines (`auto_deploy.sh main`) which the quoted dedup pattern (`auto_deploy.sh' 'main`) never matched → old-kit installs could double-fire. Dedup now filters BOTH formats (`auto_deploy.sh' '$BRANCH` AND `auto_deploy.sh $BRANCH `).
 - **Bootstrap quoting bug (caught in audit):** remote SSH commands must NOT single-quote paths that may start with `~` — single quotes block tilde expansion on the remote shell (clone would create a literal `~` dir and `test -f` would never pass). Paths are unquoted in the remote command; `SSH_PORT` is validated numeric-only in both steps (no ssh arg injection). Self-hosted workflow is unaffected (runs on the server, `$HOME` is correct there).
 - **.env fallback for notification keys (2026-09-02):** if TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID/DISCORD_WEBHOOK_URL/SLACK_WEBHOOK_URL are empty in config.sh, auto_deploy.sh borrows them from the app's `$APP_DIR/.env` (same variable names). config.sh value always wins (never overwritten). Only reads; never writes. Keeps the kit zero-duplication for projects that already keep these in .env.
+- **test.sh structure rule (2026-09-02):** the count-consistency check (section 23) MUST stay LAST — it compares test.yml's declared count against $PASS, which is only final after all core sections have run. New core sections go BEFORE it; test.yml count + MEMORY test line must be updated in the same commit or Section 23 fails CI.
