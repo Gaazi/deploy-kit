@@ -134,3 +134,14 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 | Deploy started but no Telegram | Token/chat empty | Set `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` |
 | `config.sh already exists` | Re-running setup | `rm config.sh` first |
 | Deploy slow/hang | curl without timeout | Health check uses `-m 15` — shouldn't hang |
+| "No such file or directory" in `~/deploy.log` | Workflow calls wrong path | Set `SERVER_DEPLOY_PATH` GitHub Secret to the real path |
+| Duplicate cron deploys (double-fire) | Old unquoted cron line + new quoted line both present | `cron.sh` re-install filters BOTH formats (`auto_deploy.sh' 'main` AND `auto_deploy.sh main `) — re-run cron.sh |
+| Nothing deploys when flag file exists | Toggle blocks ALL triggers | Now cron-only: `DEPLOY_TRIGGER=cron` marks cron lines; Actions/webhook/runner always run |
+| `/tmp/kit-deploy.*` leaking | EXIT trap overwritten | Combined trap cleans `LOCK_DIR` + `KIT_SNAP` together; snapshot only when `KIT_SELF_UPDATE=yes` |
+
+## Security & robustness notes (read these before editing)
+
+- **Snapshot guard:** `KIT_SELF_UPDATE=yes` → `auto_deploy.sh` re-execs from a `/tmp` snapshot BEFORE running git pull, so the live file is never rewritten while bash is reading it (shared-hosting corruption risk). Guard runs AFTER `source config.sh` — never move it before config load (it reads `KIT_SELF_UPDATE` from config).
+- **Doctor web-access check:** uses `case "$SCRIPT_DIR" in "$APP_DIR"/*)` — the trailing `/*` matters (avoids `/home/user/app2` matching `/home/user/app`). If `APP_DIR` is set and kit is inside it, `.htaccess` must exist or doctor FAILs.
+- **Branch safety:** webhook.sh validates BRANCH (only `[A-Za-z0-9._/-]`, rejects `..`) before it becomes a path. Workflows pass branch via env + `tr -cd` sanitize — never inline `'${{ github.ref_name }}'` in a shell string.
+- **`.htaccess`:** ships with the kit, denies all web access — protects `config.sh` when the kit lives inside a web-accessible app dir. Do not delete.
