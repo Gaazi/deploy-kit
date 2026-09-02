@@ -85,6 +85,11 @@ handler() {
   if [ -z "$BRANCH" ]; then
     BRANCH="$(printf '%s' "$BODY" | grep -o '"ref"[[:space:]]*:[[:space:]]*"refs/heads/[^"]*"' | head -1 | sed 's/.*refs\/heads\///;s/"//')"
   fi
+  # validate branch name: it becomes a PATH component (WORKSPACE/$BRANCH) —
+  # allow only git-safe chars and reject ".." traversal (403 on anything else)
+  case "$BRANCH" in
+    ''|*[!A-Za-z0-9._/-]*|*..*) BRANCH="" ;;
+  esac
   # verify: native GitHub webhook (HMAC) OR our custom header OR nothing
   AUTHORIZED=0
   if [ -n "$SECRET" ]; then

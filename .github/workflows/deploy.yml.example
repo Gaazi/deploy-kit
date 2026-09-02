@@ -44,10 +44,15 @@ jobs:
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
           SERVER_DEPLOY_PATH: ${{ secrets.SERVER_DEPLOY_PATH }}
+          BRANCH: ${{ github.ref_name }}
         run: |
           DEPLOY_PATH="${SERVER_DEPLOY_PATH:-~/deploy-kit/auto_deploy.sh}"
+          # sanitize branch name before it reaches the remote shell
+          # (a branch like x'; <cmd>; would break out of the quoted arg)
+          BRANCH="$(printf '%s' "$BRANCH" | tr -cd 'A-Za-z0-9._/-')"
+          [ -n "$BRANCH" ] || { echo "❌ Empty/invalid branch name"; exit 1; }
           echo "$SSH_PRIVATE_KEY" > /tmp/dk
           chmod 600 /tmp/dk
           ssh -i /tmp/dk -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes \
             -p "$SSH_PORT" "$SERVER_USER@$SERVER_HOST" \
-            "nohup /bin/bash $DEPLOY_PATH '${{ github.ref_name }}' >> ~/deploy.log 2>&1 &"
+            "nohup /bin/bash $DEPLOY_PATH '$BRANCH' >> ~/deploy.log 2>&1 &"

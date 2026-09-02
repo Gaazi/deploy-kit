@@ -446,7 +446,7 @@ So Actions mode handles roughly **2,000 deploys/month** — enough for most proj
 | Step | What | When |
 |------|-----|-----|
 | 1 | Load `config.sh` | Always |
-| 2 | Check GitHub-mode flag (`~/.deploy_github`) | If the flag is set up |
+| 2 | Check GitHub-mode flag (`~/.deploy_github`) — cron-fired deploys only | If the flag is set up |
 | 3 | **Deploy lock** (concurrent pushes can't clash; stale lock auto-cleaned) | Always |
 | 4 | Git clone/fetch workspace | First time / every push |
 | 5 | Check for new commit (same SHA = skip) | Every push |
@@ -478,11 +478,13 @@ It automatically: pins → restores the DB dump (if present) → syncs files →
 If you also have a cron deploy:
 
 ```bash
-touch ~/.deploy_github   # GitHub mode (cron skip)
-rm    ~/.deploy_github   # cron mode (GitHub skip)
+touch ~/.deploy_github   # GitHub mode — cron deploys skip, Actions/webhook/runner keep deploying
+rm    ~/.deploy_github   # cron mode again — cron deploys run
 ```
 
-In `auto_deploy.sh`, set `SKIP_WHEN_FLAG=1` and it will skip when the flag is present.
+Set `SKIP_WHEN_FLAG=1` in `config.sh` and cron-fired deploys skip while the flag exists.
+The flag ONLY affects cron deploys (`cron.sh` marks its line with `DEPLOY_TRIGGER=cron`) —
+GitHub Actions, webhook, and self-hosted runner deploys always run, flag or no flag.
 
 ---
 

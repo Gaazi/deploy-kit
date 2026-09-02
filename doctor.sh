@@ -168,7 +168,13 @@ case "${APP_TYPE:-}" in
     ;;
   docker)
     command -v docker >/dev/null 2>&1 && ok "docker found" || fail "docker CLI missing"
-    command -v docker compose >/dev/null 2>&1 || command -v docker-compose >/dev/null 2>&1 && ok "docker compose found" || warn "docker compose missing"
+    # 'command -v docker compose' is WRONG — it only checks 'docker' again.
+    # Ask docker itself whether the compose plugin/subcommand works.
+    if docker compose version >/dev/null 2>&1 || command -v docker-compose >/dev/null 2>&1; then
+      ok "docker compose found"
+    else
+      warn "docker compose missing"
+    fi
     ;;
 esac
 
@@ -240,7 +246,8 @@ else
 fi
 
 # Web-accessible config.sh warning (kit inside project root = secrets exposed)
-if [ -n "$APP_DIR" ] && case "$SCRIPT_DIR" in "$APP_DIR"*) true;; *) false;; esac; then
+# Trailing "/*" in the pattern — "/home/user/app2" must NOT match "/home/user/app"
+if [ -n "$APP_DIR" ] && case "$SCRIPT_DIR" in "$APP_DIR"/*) true;; *) false;; esac; then
   if [ -f "$SCRIPT_DIR/.htaccess" ]; then
     ok "Kit is inside the app dir but .htaccess blocks web access — config.sh is protected"
   else

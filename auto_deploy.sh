@@ -12,8 +12,24 @@
 # No project-specific info — everything comes from config.sh.
 # ============================================================
 
+# ── Self-update snapshot guard (runs BEFORE SCRIPT_DIR is finalized) ──
+# When KIT_SELF_UPDATE=yes, re-exec this script from a /tmp SNAPSHOT so the
+# later `git pull` can safely rewrite the real file — bash never executes a
+# file that changes under it (mid-run corruption risk on shared hosting).
+if [ -z "${KIT_SNAP_EXEC:-}" ]; then
+  _kitdir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  if [ "${KIT_SELF_UPDATE:-no}" = "yes" ] && [ -d "$_kitdir/.git" ]; then
+    _snap="$(mktemp /tmp/kit-deploy.XXXXXX.sh 2>/dev/null)" || _snap=""
+    if [ -n "$_snap" ] && cp "$_kitdir/auto_deploy.sh" "$_snap" 2>/dev/null; then
+      KIT_SNAP_EXEC=1 KIT_REAL_DIR="$_kitdir" KIT_SNAP="$_snap" \
+        exec /bin/bash "$_snap" "$@"
+    fi
+  fi
+fi
+
 # ── Config load ─────────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="${KIT_REAL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+trap '[ -n "${KIT_SNAP:-}" ] && rm -f "$KIT_SNAP" 2>/dev/null' EXIT
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "❌ config.sh not found — first run: cp config.example.sh config.sh"
@@ -97,10 +113,14 @@ notify() {
   fi
 }
 
-# ── 0. GitHub-mode flag (optional toggle — from config) ──────
+# ── 0. GitHub-mode flag (optional toggle — cron deploys only) ─
+# The flag means "GitHub Actions is active now" — so ONLY cron-fired
+# deploys skip (cron.sh writes DEPLOY_TRIGGER=cron in its line).
+# Actions/webhook/runner deploys never carry it and always run.
 TOGGLE_FLAG="${TOGGLE_FLAG:-/home/$SERVER_USER/.deploy_github}"
-if [ -f "$TOGGLE_FLAG" ] && [ -n "$SKIP_WHEN_FLAG" ]; then
-  log "Skipped — flag present ($TOGGLE_FLAG)"
+if [ "${DEPLOY_TRIGGER:-}" = "cron" ] && [ -f "$TOGGLE_FLAG" ] && [ -n "$SKIP_WHEN_FLAG" ]; then
+  log "Skipped — flag present ($TOGGLE_FLAG), cron disabled while GitHub mode is on"
+  echo "⏭️ Cron deploy skipped — GitHub mode flag present ($TOGGLE_FLAG). Remove it to re-enable cron."
   exit 0
 fi
 
@@ -123,7 +143,9 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   fi
 fi
 echo $$ > "$LOCK_DIR/pid" 2>/dev/null
-trap 'rm -rf "$LOCK_DIR" 2>/dev/null' EXIT
+# NOTE: this trap REPLACES the snapshot trap above — clean both here,
+# otherwise /tmp/kit-deploy.* leaked on every KIT_SELF_UPDATE=yes deploy.
+trap 'rm -rf "$LOCK_DIR" 2>/dev/null; rm -f "${KIT_SNAP:-}" 2>/dev/null' EXIT
 
 # ── 1. Git workspace ────────────────────────────────────────
 # --single-branch: only this branch's history — minimum network + disk

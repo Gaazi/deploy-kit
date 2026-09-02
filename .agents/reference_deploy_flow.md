@@ -19,7 +19,7 @@ Never add deploy work to the workflow — it belongs in auto_deploy.sh (or rollb
 
 ## auto_deploy.sh steps (numbered)
 
-0. **Flag check** — if `TOGGLE_FLAG` file exists AND `SKIP_WHEN_FLAG` set → exit 0 (toggle mode)
+0. **Flag check** — if `DEPLOY_TRIGGER=cron` (set by cron.sh's line) AND `TOGGLE_FLAG` file exists AND `SKIP_WHEN_FLAG` set → exit 0. Only CRON deploys skip — Actions/webhook/runner deploys never carry the trigger marker and always run.
 0.5 **Deploy lock** — mkdir-based `$WORKSPACE_BASE/.deploy-lock` (+ PID file): second concurrent deploy skips (the running one fetches latest anyway); stale lock (dead PID) auto-cleaned; released via trap on EXIT. Rollback uses the same lock and errors out if a deploy is running.
 1. **Workspace** — clone if missing, else `git fetch origin <branch>`. **Safety guard: if `origin/<branch>` can't be resolved (clone/fetch failed, wrong branch) → abort BEFORE rsync — the app dir is never touched.**
 2. **SHA skip** — compare `.deployed_sha`; same SHA → exit 0 (no work, prints "No new commit" on stdout too)
@@ -78,7 +78,7 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 ## Toggle (GitHub vs Cron) — optional
 
 - `TOGGLE_FLAG=""` → no toggle, always deploys
-- `TOGGLE_FLAG=/path/flag` + `SKIP_WHEN_FLAG=1` → flag present = skip (e.g. cron disabled when GitHub active)
+- `TOGGLE_FLAG=/path/flag` + `SKIP_WHEN_FLAG=1` → flag present = **cron** deploys skip (Actions/webhook/runner always run — cron.sh marks its line with `DEPLOY_TRIGGER=cron`)
 - Example: cron runs every 2 min; GitHub Runner active → user touches flag → cron skips
 
 ## GitHub Actions wiring (deploy.yml.example)
@@ -105,6 +105,7 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 - **2 auth modes (both supported):**
   - **Native GitHub webhook** (0 runner): repo → Settings → Webhooks → payload URL + secret. Handler verifies `X-Hub-Signature-256` (HMAC-SHA256) and reads branch from `"ref":"refs/heads/<branch>"`.
   - **Custom header** (from `deploy-webhook.yml.example`): `X-Deploy-Secret` matches `DEPLOY_WEBHOOK_SECRET`; branch from `{"branch":"..."}`.
+- **Branch validation:** extracted branch must match `[A-Za-z0-9._/-]+` with no `..` — anything else → 403 (branch becomes a path component `WORKSPACE/$BRANCH`).
 - GitHub secrets needed (Actions path): `DEPLOY_WEBHOOK_SECRET` (same value as server's config.sh), `DEPLOY_WEBHOOK_URL` (the public URL).
 - Toggle: with Actions + cron both present, `touch ~/.deploy_github` + `SKIP_WHEN_FLAG=1` → cron skips (Actions handles it). Remove flag → cron deploys again.
 

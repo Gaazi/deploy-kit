@@ -35,6 +35,10 @@ jobs:
       - name: Run deploy on the server
         env:
           SERVER_DEPLOY_PATH: ${{ secrets.SERVER_DEPLOY_PATH }}
+          BRANCH: ${{ github.ref_name }}
         run: |
           DEPLOY_PATH="${SERVER_DEPLOY_PATH:-$HOME/deploy-kit/auto_deploy.sh}"
-          /bin/bash "$DEPLOY_PATH" "${{ github.ref_name }}"
+          # sanitize: branch goes through the shell — never trust the name
+          BRANCH="$(printf '%s' "$BRANCH" | tr -cd 'A-Za-z0-9._/-')"
+          [ -n "$BRANCH" ] || { echo "❌ Empty/invalid branch name"; exit 1; }
+          /bin/bash "$DEPLOY_PATH" "$BRANCH"

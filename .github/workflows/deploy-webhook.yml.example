@@ -37,13 +37,17 @@ jobs:
         env:
           DEPLOY_WEBHOOK_SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
           DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          BRANCH: ${{ github.ref_name }}
         run: |
           if [ -z "$DEPLOY_WEBHOOK_SECRET" ] || [ -z "$DEPLOY_WEBHOOK_URL" ]; then
             echo "❌ Set GitHub secrets: DEPLOY_WEBHOOK_SECRET + DEPLOY_WEBHOOK_URL (see README)"
             exit 1
           fi
+          # sanitize branch before embedding in JSON (never trust the name)
+          BRANCH="$(printf '%s' "$BRANCH" | tr -cd 'A-Za-z0-9._/-')"
+          [ -n "$BRANCH" ] || { echo "❌ Empty/invalid branch name"; exit 1; }
           curl -fsS -m 8 -X POST "$DEPLOY_WEBHOOK_URL" \
             -H "X-Deploy-Secret: $DEPLOY_WEBHOOK_SECRET" \
             -H "Content-Type: application/json" \
-            -d "{\"branch\": \"${{ github.ref_name }}\", \"sha\": \"${{ github.sha }}\"}"
-          echo "✅ Webhook triggered: ${{ github.ref_name }} (${{ github.sha }})"
+            -d "{\"branch\": \"$BRANCH\", \"sha\": \"${GITHUB_SHA}\"}"
+          echo "✅ Webhook triggered: $BRANCH ($GITHUB_SHA)"

@@ -157,6 +157,12 @@ case "$RESTART_METHOD" in
 esac
 
 echo "$TARGET_SHA" > "$WORKSPACE/.deployed_sha" 2>/dev/null || true
+# manual rollback = user intervention — clear the failed marker so the
+# same SHA can be retried later (auto-rollback re-writes it afterwards,
+# so the re-deploy loop guard stays intact).
+if [ "${ROLLBACK_AUTO:-0}" != "1" ]; then
+  rm -f "$WORKSPACE/.failed_sha" 2>/dev/null || true
+fi
 
 # when called from auto-rollback, auto_deploy.sh sends its own alert — skip duplicate
 if [ "${ROLLBACK_AUTO:-0}" != "1" ]; then

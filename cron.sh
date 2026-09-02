@@ -25,11 +25,16 @@ esac
 [ "$MIN" -lt 1 ] && MIN=1   # 0/negative → 1 (valid cron interval)
 BRANCH="${2:-${DEFAULT_BRANCH:-main}}"
 LOG="${LOG_FILE:-$HOME/deploy.log}"
-LINE="*/$MIN * * * * /bin/bash '$SCRIPT_DIR/auto_deploy.sh' '$BRANCH' >> '$LOG' 2>&1"
+# DEPLOY_TRIGGER=cron marks this line as cron-fired — the toggle flag
+# (TOGGLE_FLAG + SKIP_WHEN_FLAG) then skips ONLY cron deploys, never Actions.
+LINE="*/$MIN * * * * DEPLOY_TRIGGER=cron /bin/bash '$SCRIPT_DIR/auto_deploy.sh' '$BRANCH' >> '$LOG' 2>&1"
 
 if command -v crontab >/dev/null 2>&1; then
-  # install, removing any older deploy line for this branch first
-  ( crontab -l 2>/dev/null | grep -v "auto_deploy.sh $BRANCH" ; echo "$LINE" ) | crontab -
+  # install, removing any older deploy line for this branch first.
+  # Match BOTH line styles: new (quoted: auto_deploy.sh' 'main) and old
+  # (unquoted: auto_deploy.sh main) — otherwise old-kit lines pile up as
+  # duplicates and the branch double-fires.
+  ( crontab -l 2>/dev/null | grep -v "auto_deploy.sh' '$BRANCH" | grep -v "auto_deploy.sh $BRANCH " ; echo "$LINE" ) | crontab -
   echo "✅ Cron installed — every $MIN min → auto-deploy '$BRANCH' (0 GitHub Actions)"
   echo "   Line added: $LINE"
   echo "   View/remove: crontab -e  (delete the auto_deploy.sh line)"
