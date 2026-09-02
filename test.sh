@@ -482,6 +482,15 @@ BEFORE="$(ls /tmp/kit-deploy.* 2>/dev/null | wc -l)"
 AFTER="$(ls /tmp/kit-deploy.* 2>/dev/null | wc -l)"
 [ "$AFTER" -le "$BEFORE" ] && ok "KIT_SNAP: no /tmp/kit-deploy.* leak after deploy" || bad "KIT_SNAP: no /tmp/kit-deploy.* leak after deploy"
 
+echo "== 20. ZERO project references (public-ready guard) =="
+# Machine-enforced: ANY push to main runs this and FAILS if a real project
+# name appears in files or git history. Works for every agent, no memory needed.
+REF_PAT='dms|esabaq|darul|ilm\.|lqp|learn quran|learn_quran'
+REF_FILE_HITS="$(grep -rniE "$REF_PAT" --include='*.sh' --include='*.md' --include='*.yml*' --include='*.example' . 2>/dev/null | grep -v '.git/' | grep -v 'AGENTS.md' | grep -v '^./test.sh' | wc -l)"
+[ "$REF_FILE_HITS" -eq 0 ] && ok "no project references in files" || bad "project references found in files ($REF_FILE_HITS)"
+REF_HIST_HITS="$(git log --format='%s%n%b' 2>/dev/null | grep -icE "$REF_PAT")"
+[ "$REF_HIST_HITS" -eq 0 ] && ok "no project references in git history" || bad "project references found in git history ($REF_HIST_HITS)"
+
 echo ""
 echo "============================================="
 echo "  PASS: $PASS   FAIL: $FAIL"

@@ -16,7 +16,7 @@ on:
 
 jobs:
   selftest:
-    name: Run test.sh (55 checks)
+    name: Run test.sh (57 checks)
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

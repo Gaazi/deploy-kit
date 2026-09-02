@@ -11,7 +11,7 @@
 - **Resource budget (GitHub):** hosted ~1 min/deploy · native webhook 0 · cron 0 · self-hosted 0 · docs push 0 (paths-ignore)
 - **Resource budget (server):** `--single-branch` clone · SHA-skip instant · log 1MB rotation · DB_BACKUP_KEEP · deploy lock · optional steps only when configured
 - **Required config:** only `REPO_URL` + `APP_DIR`. Everything else optional — empty = skip, never crash.
-- **Test:** `/bin/bash test.sh` — 55 checks, run before committing. CI runs it on every push to main.
+- **Test:** `/bin/bash test.sh` — 57 checks, run before committing. CI runs it on every push to main.
 - **Deploy flow:** git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health → notifications (Telegram/Discord/Slack/Email)
 
 ## File map (what each script does)
