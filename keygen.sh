@@ -28,7 +28,7 @@ if [ -z "${DEPLOY_KEY:-}" ] && [ -n "$REPO_URL" ]; then
       *.pub|*authorized_keys*|*known_hosts*) continue ;;
     esac
     [ -f "$candidate" ] || continue
-    if GIT_SSH_COMMAND="ssh -i \"$candidate\" -o StrictHostKeyChecking=no -o ConnectTimeout=8" \
+    if GIT_SSH_COMMAND="ssh -i \"$candidate\" -o StrictHostKeyChecking=no -o ConnectTimeout=8 -o BatchMode=yes" \
        git ls-remote "$REPO_URL" HEAD >/dev/null 2>&1; then
       echo "✅ Found an ALREADY-WORKING key: $candidate"
       echo "   Reusing it — no need to create a new one or add it to GitHub."

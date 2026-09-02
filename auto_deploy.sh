@@ -59,7 +59,7 @@ fi
 # early — otherwise the user sees "Branch not found" or SSH key errors that
 # point the wrong way.
 case "$REPO_URL" in
-  *YOUR_USER*|*your_user*|*example*|*user/repo*) 
+  *YOUR_USER*|*YOUR_REPO*)
     echo "❌ config.sh still has PLACEHOLDER values — edit it and put your real values:"
     echo "   REPO_URL is: $REPO_URL"
     echo "   It should be: git@github.com:YOU/your-repo.git"
