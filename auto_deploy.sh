@@ -350,7 +350,7 @@ if [ -n "$MIGRATE_CMD" ]; then
     notify "❌ <b>Deploy FAILED (Migrate)</b> ($SITE_DOMAIN · $BRANCH) — migrate failed
 <code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
 Check server log: $LOG" "Deploy Migration FAILED: $SITE_DOMAIN ($BRANCH)"
-    echo "❌ Migrate FAILED — deploy aborted. Restore the DB from backups/predeploy/, then run: rollback.sh $BRANCH" | tee -a "$LOG"
+    echo "❌ Migrate FAILED — deploy aborted. Restore the DB from $BK_DIR, then run: rollback.sh $BRANCH" | tee -a "$LOG"
     exit 1
   fi
 fi

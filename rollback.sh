@@ -126,7 +126,7 @@ if [ -n "$BUILD_CMD" ]; then
 fi
 
 # restore pre-migration DB dump if present
-LATEST_DUMP="$(ls -1t "$WORKSPACE_BASE/backups/"*/*.sql "$WORKSPACE_BASE/backups/"*/*.db 2>/dev/null | head -1)"
+LATEST_DUMP="$(ls -1t "$WORKSPACE_BASE/backups/$BRANCH/"*.sql "$WORKSPACE_BASE/backups/$BRANCH/"*.db 2>/dev/null | head -1)"
 # sqlite needs no DB_USER — only DB_NAME (file path inside APP_DIR)
 if [ -n "$LATEST_DUMP" ] && [ -n "$DB_NAME" ]; then
   echo "🔄 Restoring DB: $LATEST_DUMP"
