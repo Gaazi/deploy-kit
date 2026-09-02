@@ -117,16 +117,16 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 | **B — Copy manually** | FTP / file manager into `~/deploy-kit/` | Any hosting |
 | **C — Download on server** | `git clone https://github.com/Gaazi/deploy-kit.git ~/deploy-kit` | You have SSH access |
 
-**Where to put the kit — both are safe, pick your preference:**
+**Where to put the kit — by design, it lives INSIDE the project:**
 
 | Location | How | Notes |
 |---|---|---|
-| **Home level** | `~/deploy-kit/` | Kit separate from the app. Bootstrap installs here by default. One kit can serve many sites (the caller passes `APP_DIR` per site) |
-| **Inside the project** | `~/your-app.com/deploy-kit/` | Everything in one folder. rsync excludes `deploy_kit/` / `deploy-kit/` so it is never wiped. `.htaccess` denies browser access (config.sh protected). Set `SERVER_DEPLOY_PATH` to this path |
-
-> **Multiple sites on one server?** One central kit at `~/deploy-kit/` is simplest — the caller (wrapper or workflow) passes `APP_DIR` per site, so each site gets its own deploy target with a single kit install. Per-site kits (a copy inside each project) also work — just set `SERVER_DEPLOY_PATH` per repo.
+| **Inside the project** (standard) | `~/your-app.com/deploy-kit/` | Everything in one folder. rsync excludes `deploy_kit/` / `deploy-kit/` so it is never wiped. `.htaccess` denies browser access (config.sh protected). |
+| **Home level** (alternative) | `~/deploy-kit/` | Kit separate from the app. Useful when one kit serves many sites (the caller passes `APP_DIR` per site). Bootstrap default. |
 
 > If you put the kit **inside the project folder**: set the `SERVER_DEPLOY_PATH` GitHub Secret to that path (e.g. `~/your-app.com/deploy-kit/auto_deploy.sh`). The included `.htaccess` blocks web access to `config.sh` — do not delete it.
+
+> **Multiple sites on one server?** Each site can have its own kit inside the project (just set `SERVER_DEPLOY_PATH` per repo). Alternatively, one central kit at `~/deploy-kit/` serves many sites — the caller passes `APP_DIR` per site. Both work.
 
 ```bash
 # Option B — copy the files (FTP / file manager) into ~/deploy-kit/ ...
