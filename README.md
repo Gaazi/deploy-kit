@@ -117,14 +117,16 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 | **B — Copy manually** | FTP / file manager into `~/deploy-kit/` | Any hosting |
 | **C — Download on server** | `git clone https://github.com/Gaazi/deploy-kit.git ~/deploy-kit` | You have SSH access |
 
-**Where to put the kit — your choice:**
+**Where to put the kit — both are safe, pick your preference:**
 
 | Location | How | Notes |
 |---|---|---|
-| **Home level** (recommended) | `~/deploy-kit/` | Kit is separate from the app — simplest, survives every deploy, never web-accessible. Bootstrap installs here by default |
-| **Inside the project** | `~/your-app.com/deploy_kit/` | All in one folder — rsync excludes `deploy_kit/` / `deploy-kit/` so it's never wiped. `.htaccess` denies browser access (config.sh protected) |
+| **Home level** | `~/deploy-kit/` | Kit separate from the app. Bootstrap installs here by default. One kit can serve many sites (the caller passes `APP_DIR` per site) |
+| **Inside the project** | `~/your-app.com/deploy-kit/` | Everything in one folder. rsync excludes `deploy_kit/` / `deploy-kit/` so it is never wiped. `.htaccess` denies browser access (config.sh protected). Set `SERVER_DEPLOY_PATH` to this path |
 
-> If you put the kit **inside the project folder**: set the `SERVER_DEPLOY_PATH` GitHub Secret to that path (e.g. `~/your-app.com/deploy_kit/auto_deploy.sh`). The included `.htaccess` blocks web access to `config.sh` — do not delete it.
+> **Multiple sites on one server?** One central kit at `~/deploy-kit/` is simplest — the caller (wrapper or workflow) passes `APP_DIR` per site, so each site gets its own deploy target with a single kit install. Per-site kits (a copy inside each project) also work — just set `SERVER_DEPLOY_PATH` per repo.
+
+> If you put the kit **inside the project folder**: set the `SERVER_DEPLOY_PATH` GitHub Secret to that path (e.g. `~/your-app.com/deploy-kit/auto_deploy.sh`). The included `.htaccess` blocks web access to `config.sh` — do not delete it.
 
 ```bash
 # Option B — copy the files (FTP / file manager) into ~/deploy-kit/ ...
