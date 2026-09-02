@@ -41,6 +41,20 @@ WORKSPACE="$WORKSPACE_BASE/$BRANCH"
 LOG="${LOG_FILE:-/home/$SERVER_USER/deploy.log}"
 NOW="$(date '+%F %T')"
 
+# ── .env fallback: auto-read app secrets the project already keeps ──
+# If config.sh leaves notification keys empty, borrow them from the app's
+# own .env (same file the app uses). No password duplication, no secrets in
+# the repo. Only well-known variable names are supported; anything missing
+# just stays empty (feature = optional, never fatal).
+if [ -f "$APP_DIR/.env" ]; then
+  _envget() { grep -E "^$1=" "$APP_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//'; }
+  [ -z "$TELEGRAM_BOT_TOKEN" ] && TELEGRAM_BOT_TOKEN="$(_envget TELEGRAM_BOT_TOKEN)"
+  [ -z "$TELEGRAM_CHAT_ID" ]   && TELEGRAM_CHAT_ID="$(_envget TELEGRAM_CHAT_ID)"
+  [ -z "$DISCORD_WEBHOOK_URL" ] && DISCORD_WEBHOOK_URL="$(_envget DISCORD_WEBHOOK_URL)"
+  [ -z "$SLACK_WEBHOOK_URL" ]   && SLACK_WEBHOOK_URL="$(_envget SLACK_WEBHOOK_URL)"
+  unset -f _envget
+fi
+
 DEPLOY_START_TIME="$(date +%s)"
 
 # ── Log rotation (keep it light — 1MB cap) ─────────────────

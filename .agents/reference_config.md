@@ -50,10 +50,10 @@ Backup verification: every dump is validated (non-empty + correct signature — 
 ## Notifications (optional — multi-channel alerts)
 | Key | What |
 |-----|------|
-| `TELEGRAM_BOT_TOKEN` | @BotFather token — `""` = no alerts |
-| `TELEGRAM_CHAT_ID` | Chat ID — `""` = no alerts |
-| `DISCORD_WEBHOOK_URL` | Discord webhook URL — `""` = no alerts |
-| `SLACK_WEBHOOK_URL` | Slack incoming webhook URL — `""` = no alerts |
+| `TELEGRAM_BOT_TOKEN` | @BotFather token — `""` = no alerts. If empty, auto-read from app's `.env` (same variable name) |
+| `TELEGRAM_CHAT_ID` | Chat ID — `""` = no alerts. If empty, auto-read from app's `.env` |
+| `DISCORD_WEBHOOK_URL` | Discord webhook URL — `""` = no alerts. If empty, auto-read from app's `.env` |
+| `SLACK_WEBHOOK_URL` | Slack incoming webhook URL — `""` = no alerts. If empty, auto-read from app's `.env` |
 | `ALERT_EMAIL` | Email address for alerts (uses `mail`/`sendmail`) — `""` = no alerts |
 
 ## Webhook trigger (optional, VPS only)
