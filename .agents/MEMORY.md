@@ -108,6 +108,7 @@
 
 - **Test count:** 55 checks (`test.sh`), CI name synced in test.yml. When adding tests, update: test.sh → test.yml name → MEMORY self-test line.
 - **Branches:** dev = main = `3bb1888` (synced + pushed). Work in dev, merge dev→main, push both.
+- **NO AUTO-MERGE (user rule, CRITICAL):** Never merge dev→main (or promote branches) on my own. Only merge/push-to-main when the USER explicitly says so (e.g. "merge karo", "merge and push"). Committing to dev + pushing dev is fine any time; promoting to main requires explicit user instruction.
 - **Standalone repo public-ready:** zero related-project references anywhere (files, git history subjects+bodies, refs). Git history was filter-branch rewritten — NEVER reintroduce project names in commits.
 - **All security in place:** config.sh gitignored + chmod 600 + .htaccess deny (if inside app dir) + doctor web-access check. rsync excludes `deploy_kit/` + `deploy-kit/`.
 - **Kit self-update:** KIT_SELF_UPDATE=yes → snapshot re-exec (config-load-first) then git pull in SCRIPT_DIR; config.sh never touched.

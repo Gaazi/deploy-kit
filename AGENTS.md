@@ -127,10 +127,10 @@ cp config.example.sh config.sh && nano config.sh   # Method C — manual
 
 The kit is a **100% standalone project** — no other project is tied to it.
 
-1. **This repo** (branch `main`) — commit + push here
-2. **User's server** `~/deploy-kit/` (deployed files — user copies manually)
-
-**After any change:** commit + push to `main`. That's it — nothing else to sync.
+1. **Work in `dev` branch** — all development, fixes, improvements happen here.
+2. **Push `dev`** any time — that's always fine.
+3. **NO AUTO-MERGE to `main`** — merging to `main` is user territory. Only merge when the user explicitly says "merge karo" or "merge and push". Never promote dev→demo→main on my own.
+4. **User's server** `~/deploy-kit/` — deployed files, user copies manually.
 
 ---
 
