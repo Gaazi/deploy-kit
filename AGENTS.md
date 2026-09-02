@@ -84,7 +84,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 
 ---
 
-## File Structure (22 files + .agents/)
+## File Structure (23 files + .agents/)
 
 | File | Purpose |
 |------|---------|
@@ -108,6 +108,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 | `README.md` | User guide (quickstart + 3 setup methods, config table, checklist) |
 | `.gitignore` | Protects `config.sh` / secrets |
 | `.htaccess` | Denies web access if kit is inside the app dir (protects config.sh) |
+| `opencode.json` | Editor/tool config for coding agents |
 | `AGENTS.md` | Project agent rules (this file) |
 | `LICENSE` | MIT |
 

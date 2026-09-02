@@ -74,7 +74,7 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 
 ---
 
-## 📁 Files (22 + .agents/)
+## 📁 Files (23 + .agents/)
 
 | File | What it does |
 |------|---------------|
@@ -96,10 +96,10 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 | `.github/workflows/deploy-webhook.yml.example` | GitHub Actions trigger (webhook, ~1-2s) |
 | `.github/workflows/test.yml` | CI self-test (runs test.sh on push/PR) |
 | `README.md` | This guide |
-| `AGENTS.md` + `.agents/` | Agent rules + memory (for AI agents / future developers) |
-| `LICENSE` | MIT License — for a public repo |
 | `.gitignore` | So `config.sh` / secrets are never committed |
 | `.htaccess` | **Blocks web access if kit is inside the app dir** — protects `config.sh` (DB_PASS, keys) from the browser |
+| `opencode.json` | Editor/tool config for coding agents |
+| `AGENTS.md` + `.agents/` | Agent rules + memory (for AI agents / future developers) |
 
 ---
 
@@ -593,7 +593,7 @@ README.md
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (22 files)
+- [ ] `~/deploy-kit/` on the server (23 files)
 - [ ] Created `config.sh` (wizard: `/bin/bash setup.sh`)
 - [ ] `chmod +x *.sh`
 - [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅
