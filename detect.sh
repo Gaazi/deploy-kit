@@ -14,14 +14,22 @@
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BRANCH_ARG="${1:-}"
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
+if [ -n "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH_ARG}.sh" ]; then
+  CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH_ARG}.sh"
+fi
 if [ ! -f "$CONFIG_FILE" ]; then
-  echo "❌ config.sh not found — run setup.sh first, then keygen.sh"
+  echo "❌ $(basename "$CONFIG_FILE") not found — run setup.sh first, then keygen.sh"
   exit 1
 fi
 source "$CONFIG_FILE"
 
 BRANCH="${1:-${DEFAULT_BRANCH:-main}}"
+if [ -z "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH}.sh" ]; then
+  CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH}.sh"
+  source "$CONFIG_FILE"
+fi
 WORKSPACE_BASE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}"
 WORKSPACE="$WORKSPACE_BASE/$BRANCH"
 
@@ -100,7 +108,7 @@ echo "  RESTART_METHOD  = $RESTART_METHOD"
 echo ""
 
 # ── 4. Apply to config.sh? ─────────────────────────────────
-read -rp "Apply these to config.sh? (yes/no) [yes]: " ANS
+read -rp "Apply these to $(basename "$CONFIG_FILE")? (yes/no) [yes]: " ANS
 case "$ANS" in
   ""|y|Y|yes|YES|Yes)
     apply_key() {  # $1=KEY  $2=value (safe: no sed/echo expansion of & $ | etc.)
@@ -113,10 +121,10 @@ case "$ANS" in
     apply_key BUILD_CMD "$BUILD_CMD"
     apply_key MIGRATE_CMD "$MIGRATE_CMD"
     apply_key RESTART_METHOD "$RESTART_METHOD"
-    echo "✅ Applied to config.sh"
+    echo "✅ Applied to $(basename "$CONFIG_FILE")"
     echo "   Next: /bin/bash auto_deploy.sh $BRANCH"
     ;;
   *)
-    echo "⏭️  Not applied — copy the values above into config.sh manually."
+    echo "⏭️  Not applied — copy the values above into $(basename "$CONFIG_FILE") manually."
     ;;
 esac

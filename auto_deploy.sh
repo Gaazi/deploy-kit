@@ -21,7 +21,7 @@ if [ -n "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH_ARG}.sh" ]; then
   CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH_ARG}.sh"
 fi
 if [ ! -f "$CONFIG_FILE" ]; then
-  echo "❌ config.sh not found — first run: cp config.example.sh config.sh"
+  echo "❌ $(basename "$CONFIG_FILE") not found — first run: cp config.example.sh config.sh"
   exit 1
 fi
 source "$CONFIG_FILE"
@@ -73,7 +73,7 @@ fi
 
 # ── Required check (only these 2 required — rest optional) ─
 if [ -z "$REPO_URL" ] || [ -z "$APP_DIR" ]; then
-  echo "❌ config.sh: REPO_URL and APP_DIR are required — everything else is optional."
+  echo "❌ $(basename "$CONFIG_FILE"): REPO_URL and APP_DIR are required — everything else is optional."
   exit 1
 fi
 
@@ -92,7 +92,7 @@ fi
 # point the wrong way.
 case "$REPO_URL" in
   *YOUR_USER*|*YOUR_REPO*)
-    echo "❌ config.sh still has PLACEHOLDER values — edit it and put your real values:"
+    echo "❌ $(basename "$CONFIG_FILE") still has PLACEHOLDER values — edit it and put your real values:"
     echo "   REPO_URL is: $REPO_URL"
     echo "   It should be: git@github.com:YOU/your-repo.git"
     echo "   First time? Run: /bin/bash setup.sh  (or edit config.sh directly)"
@@ -100,7 +100,7 @@ case "$REPO_URL" in
 esac
 case "$APP_DIR" in
   *your-app*|*your_app*) 
-    echo "❌ config.sh APP_DIR looks like a placeholder — set your real app folder path:"
+    echo "❌ $(basename "$CONFIG_FILE") APP_DIR looks like a placeholder — set your real app folder path:"
     echo "   APP_DIR is: $APP_DIR"
     exit 1 ;;
 esac
@@ -274,6 +274,7 @@ RSYNC_ARGS=(--exclude='/.git/' --exclude='.env' --exclude='*.db' --exclude='*.sq
   --exclude='__pycache__/' --exclude='*.pyc' --exclude='node_modules/' \
   --exclude='venv/' --exclude='.venv/' --exclude='*.log' --exclude='media/' \
   --exclude='backups/' --exclude='tests/' --exclude='deploy_kit/' --exclude='deploy-kit/' \
+  --exclude='config.*.sh' --exclude='config.sh' \
   --exclude='.htaccess' --exclude='.htaccess.')
 for ex in $RSYNC_EXCLUDES; do RSYNC_ARGS+=(--exclude="$ex"); done
 # APP_SUBDIR (optional): deploy only one subfolder (monorepos)

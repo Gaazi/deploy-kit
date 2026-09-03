@@ -15,7 +15,11 @@
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BRANCH_ARG="${2:-}"
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
+if [ -n "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH_ARG}.sh" ]; then
+  CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH_ARG}.sh"
+fi
 [ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
 
 MIN="${1:-2}"
@@ -24,6 +28,10 @@ case "$MIN" in
 esac
 [ "$MIN" -lt 1 ] && MIN=1   # 0/negative → 1 (valid cron interval)
 BRANCH="${2:-${DEFAULT_BRANCH:-main}}"
+if [ -z "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH}.sh" ]; then
+  CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH}.sh"
+  source "$CONFIG_FILE"
+fi
 LOG="${LOG_FILE:-$HOME/deploy.log}"
 # DEPLOY_TRIGGER=cron marks this line as cron-fired — the toggle flag
 # (TOGGLE_FLAG + SKIP_WHEN_FLAG) then skips ONLY cron deploys, never Actions.

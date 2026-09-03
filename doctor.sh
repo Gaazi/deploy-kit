@@ -62,7 +62,7 @@ done
 echo ""
 echo "== 3. Configuration ($CONFIG_FILE) =="
 if [ ! -f "$CONFIG_FILE" ]; then
-  fail "config.sh not found at: $CONFIG_FILE"
+  fail "$(basename "$CONFIG_FILE") not found at: $CONFIG_FILE"
   echo "     Run setup wizard first: /bin/bash setup.sh"
   echo ""
   echo "============================================="
@@ -70,14 +70,14 @@ if [ ! -f "$CONFIG_FILE" ]; then
   echo "============================================="
   exit 1
 fi
-ok "config.sh found"
+ok "$(basename "$CONFIG_FILE") found"
 
 # Check file permissions (GNU: stat -c %a → "600", BSD: stat -f %Lp → "600")
 CONFIG_PERMS="$(stat -c %a "$CONFIG_FILE" 2>/dev/null || stat -f %Lp "$CONFIG_FILE" 2>/dev/null || echo '')"
 if [ "$CONFIG_PERMS" = "600" ] || [ "$CONFIG_PERMS" = "400" ]; then
-  ok "config.sh permissions secure ($CONFIG_PERMS)"
+  ok "$(basename "$CONFIG_FILE") permissions secure ($CONFIG_PERMS)"
 else
-  warn "config.sh permissions are $CONFIG_PERMS (recommended: chmod 600 config.sh)"
+  warn "$(basename "$CONFIG_FILE") permissions are $CONFIG_PERMS (recommended: chmod 600 $(basename "$CONFIG_FILE"))"
 fi
 
 # Load config
@@ -85,8 +85,8 @@ fi
 source "$CONFIG_FILE"
 
 # Required settings
-[ -n "$REPO_URL" ] && ok "REPO_URL: $REPO_URL" || fail "REPO_URL is missing in config.sh"
-[ -n "$APP_DIR" ] && ok "APP_DIR: $APP_DIR" || fail "APP_DIR is missing in config.sh"
+[ -n "$REPO_URL" ] && ok "REPO_URL: $REPO_URL" || fail "REPO_URL is missing in $(basename "$CONFIG_FILE")"
+[ -n "$APP_DIR" ] && ok "APP_DIR: $APP_DIR" || fail "APP_DIR is missing in $(basename "$CONFIG_FILE")"
 [ -n "$SITE_DOMAIN" ] && info "Domain: $SITE_DOMAIN" || warn "SITE_DOMAIN is not set"
 [ -n "$APP_TYPE" ] && info "App Type: $APP_TYPE" || info "App Type: default"
 [ -n "$PRE_DEPLOY_HOOK" ] && info "Pre-deploy hook: $PRE_DEPLOY_HOOK"
@@ -262,9 +262,9 @@ fi
 # Trailing "/*" in the pattern — "/home/user/app2" must NOT match "/home/user/app"
 if [ -n "$APP_DIR" ] && case "$SCRIPT_DIR" in "$APP_DIR"/*) true;; *) false;; esac; then
   if [ -f "$SCRIPT_DIR/.htaccess" ]; then
-    ok "Kit is inside the app dir but .htaccess blocks web access — config.sh is protected"
+    ok "Kit is inside the app dir but .htaccess blocks web access — $(basename "$CONFIG_FILE") is protected"
   else
-    fail "Kit is inside the web-accessible app dir but NO .htaccess — config.sh (DB_PASS, keys) may be visible in the browser. Add a .htaccess that denies all access."
+    fail "Kit is inside the web-accessible app dir but NO .htaccess — $(basename "$CONFIG_FILE") (DB_PASS, keys) may be visible in the browser. Add a .htaccess that denies all access."
   fi
 fi
 
@@ -285,6 +285,12 @@ if [ "${AUTO_ROLLBACK_ON_FAIL:-no}" = "yes" ] || [ "${AUTO_ROLLBACK_ON_FAIL:-fal
   ok "Auto-rollback on health failure is ENABLED"
 else
   info "Auto-rollback on health failure is disabled (manual rollback mode)"
+fi
+
+if [ "${RESTORE_ON_FAIL:-no}" = "yes" ]; then
+  ok "Auto-restore DB on migration failure is ENABLED"
+else
+  info "Auto-restore DB on migration failure is disabled (optional)"
 fi
 
 # ── Summary ─────────────────────────────────────────────────

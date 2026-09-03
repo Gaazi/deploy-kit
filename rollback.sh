@@ -14,7 +14,7 @@ CONFIG_FILE="${SCRIPT_DIR}/config.sh"
 if [ -n "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH_ARG}.sh" ]; then
   CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH_ARG}.sh"
 fi
-[ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE" || { echo "❌ config.sh not found"; exit 1; }
+[ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE" || { echo "❌ $(basename "$CONFIG_FILE") not found"; exit 1; }
 
 BRANCH="${1:-${DEFAULT_BRANCH:-main}}"
 if [ -z "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH}.sh" ]; then
@@ -117,6 +117,7 @@ RSYNC_ARGS=(--exclude='/.git/' --exclude='.env' --exclude='*.db' --exclude='*.sq
   --exclude='__pycache__/' --exclude='*.pyc' --exclude='node_modules/' \
   --exclude='venv/' --exclude='.venv/' --exclude='*.log' --exclude='media/' \
   --exclude='backups/' --exclude='tests/' --exclude='deploy_kit/' --exclude='deploy-kit/' \
+  --exclude='config.*.sh' --exclude='config.sh' \
   --exclude='.htaccess' --exclude='.htaccess.')
 for ex in $RSYNC_EXCLUDES; do RSYNC_ARGS+=(--exclude="$ex"); done
 # APP_SUBDIR (optional): deploy only one subfolder (monorepos)

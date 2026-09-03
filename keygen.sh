@@ -11,7 +11,15 @@
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BRANCH_ARG="${1:-}"
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
+if [ -n "$BRANCH_ARG" ]; then
+  if [ -f "$BRANCH_ARG" ]; then
+    CONFIG_FILE="$BRANCH_ARG"
+  elif [ -f "${SCRIPT_DIR}/config.${BRANCH_ARG}.sh" ]; then
+    CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH_ARG}.sh"
+  fi
+fi
 [ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
 
 KEY="${DEPLOY_KEY:-$HOME/.ssh/deploy_key}"
@@ -57,7 +65,7 @@ if [ -f "$CONFIG_FILE" ]; then
   else
     echo "DEPLOY_KEY=\"$KEY\"" >> "$CONFIG_FILE"
   fi
-  echo "✅ DEPLOY_KEY set in config.sh"
+  echo "✅ DEPLOY_KEY set in $(basename "$CONFIG_FILE")"
 fi
 
 # ── 3. Authorize GitHub Actions → server login ───
