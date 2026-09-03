@@ -40,7 +40,7 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 1. **100% GENERIC** — this kit can become PUBLIC anytime. Never add:
    - Any real project's data, domains, usernames, DB names
    - Real secrets, tokens, keys, passwords (only placeholders in examples)
-2. **`config.sh` NEVER committed** — `.gitignore` has it. Secrets live only on the server.
+2. **`config.sh` / `config.<branch>.sh` NEVER committed** — `.gitignore` covers both (`config.*.sh`, with `!config.example.sh`). Secrets live only on the server.
 3. **Everything OPTIONAL** — only `REPO_URL` + `APP_DIR` are required. Backup, build, migrate, restart, health check, Telegram, toggle — all optional; empty config = skip, never crash.
 4. **No heavy dependencies** — pure bash + git + rsync + curl. No Docker requirement, no daemon, no root. Must work on shared hosting.
 5. **Extend, don't rewrite** — keep existing scripts compatible (setup.sh, setup-quick.sh, config.example.sh).

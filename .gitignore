@@ -1,6 +1,8 @@
 # Deploy Kit — never commit secrets or local state
 # Secrets (live only on the server, never in git)
 config.sh
+config.*.sh
+!config.example.sh
 *.env
 .env
 .env.*
