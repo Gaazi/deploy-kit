@@ -44,10 +44,12 @@ if [ -z "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH}.sh" ]; then
   CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH}.sh"
   source "$CONFIG_FILE"
 fi
-APP_DIR="${APP_DIR:-/home/$SERVER_USER/app}"
-WORKSPACE_BASE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}"
+USER_HOME="${HOME:-${SERVER_USER:+/home/$SERVER_USER}}"
+USER_HOME="${USER_HOME:-/home/$SERVER_USER}"
+APP_DIR="${APP_DIR:-$USER_HOME/app}"
+WORKSPACE_BASE="${WORKSPACE_BASE:-$USER_HOME/deploy-workspace}"
 WORKSPACE="$WORKSPACE_BASE/$BRANCH"
-LOG="${LOG_FILE:-/home/$SERVER_USER/deploy.log}"
+LOG="${LOG_FILE:-$USER_HOME/deploy.log}"
 NOW="$(date '+%F %T')"
 
 # ── .env fallback: auto-read app secrets the project already keeps ──
@@ -165,7 +167,7 @@ notify() {
 # The flag means "GitHub Actions is active now" — so ONLY cron-fired
 # deploys skip (cron.sh writes DEPLOY_TRIGGER=cron in its line).
 # Actions/webhook/runner deploys never carry it and always run.
-TOGGLE_FLAG="${TOGGLE_FLAG:-/home/$SERVER_USER/.deploy_github}"
+TOGGLE_FLAG="${TOGGLE_FLAG:-$USER_HOME/.deploy_github}"
 if [ "${DEPLOY_TRIGGER:-}" = "cron" ] && [ -f "$TOGGLE_FLAG" ] && [ -n "$SKIP_WHEN_FLAG" ]; then
   log "Skipped — flag present ($TOGGLE_FLAG), cron disabled while GitHub mode is on"
   echo "⏭️ Cron deploy skipped — GitHub mode flag present ($TOGGLE_FLAG). Remove it to re-enable cron."

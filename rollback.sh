@@ -21,10 +21,12 @@ if [ -z "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH}.sh" ]; then
   CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH}.sh"
   source "$CONFIG_FILE"
 fi
-APP_DIR="${APP_DIR:-/home/$SERVER_USER/app}"
-WORKSPACE_BASE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}"
+USER_HOME="${HOME:-${SERVER_USER:+/home/$SERVER_USER}}"
+USER_HOME="${USER_HOME:-/home/$SERVER_USER}"
+APP_DIR="${APP_DIR:-$USER_HOME/app}"
+WORKSPACE_BASE="${WORKSPACE_BASE:-$USER_HOME/deploy-workspace}"
 WORKSPACE="$WORKSPACE_BASE/$BRANCH"
-LOG="${LOG_FILE:-/home/$SERVER_USER/deploy.log}"
+LOG="${LOG_FILE:-$USER_HOME/deploy.log}"
 TARGET_SHA="${2:-$(cat "$WORKSPACE/.deployed_sha" 2>/dev/null)}"
 
 # ── Multi-channel notification helper (Telegram, Discord, Slack, Email) ──

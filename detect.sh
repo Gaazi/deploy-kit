@@ -30,7 +30,9 @@ if [ -z "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH}.sh" ]; then
   CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH}.sh"
   source "$CONFIG_FILE"
 fi
-WORKSPACE_BASE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}"
+USER_HOME="${HOME:-${SERVER_USER:+/home/$SERVER_USER}}"
+USER_HOME="${USER_HOME:-/home/$SERVER_USER}"
+WORKSPACE_BASE="${WORKSPACE_BASE:-$USER_HOME/deploy-workspace}"
 WORKSPACE="$WORKSPACE_BASE/$BRANCH"
 
 # ── 1. Get the code (clone or update workspace) ─────────────

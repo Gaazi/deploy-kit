@@ -96,7 +96,9 @@ source "$CONFIG_FILE"
 # ── 4. Directories & Permissions ────────────────────────────
 echo ""
 echo "== 4. Directories & Permissions =="
-WORKSPACE_DIR="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}"
+USER_HOME="${HOME:-${SERVER_USER:+/home/$SERVER_USER}}"
+USER_HOME="${USER_HOME:-/home/$SERVER_USER}"
+WORKSPACE_DIR="${WORKSPACE_BASE:-$USER_HOME/deploy-workspace}"
 if mkdir -p "$WORKSPACE_DIR" 2>/dev/null && [ -w "$WORKSPACE_DIR" ]; then
   ok "Workspace directory writable: $WORKSPACE_DIR"
 else
@@ -118,7 +120,7 @@ else
   fi
 fi
 
-LOG_DEST="${LOG_FILE:-/home/$SERVER_USER/deploy.log}"
+LOG_DEST="${LOG_FILE:-$USER_HOME/deploy.log}"
 LOG_DIR="$(dirname "$LOG_DEST")"
 if [ -w "$LOG_DIR" ] 2>/dev/null; then
   ok "Log location writable: $LOG_DEST"
