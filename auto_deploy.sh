@@ -320,8 +320,10 @@ if [ "$DB_BACKUP" = "yes" ] && { [ -z "$DB_USER" ] || [ -z "$DB_PASS" ]; }; then
       *:*) DB_USER="${DB_USER:-${DB_USERINFO%%:*}}"; DB_PASS="${DB_PASS:-${DB_USERINFO#*:}}" ;;
       *)   DB_USER="${DB_USER:-$DB_USERINFO}" ;;
     esac
-    DB_HOST="${DB_HOST:-${DB_HOSTPORT%%/*}}"
-    DB_NAME="${DB_NAME:-${DB_HOSTPORT#*/}}"
+    _host_raw="${DB_HOSTPORT%%/*}"
+    _db_raw="${DB_HOSTPORT#*/}"
+    DB_HOST="${DB_HOST:-${_host_raw%%:*}}"
+    DB_NAME="${DB_NAME:-${_db_raw%%\?*}}"
     log "DB creds auto-read from .env (backup)"
   fi
 fi

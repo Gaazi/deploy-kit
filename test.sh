@@ -19,10 +19,16 @@ bad() { echo "  ❌ $1"; FAIL=$((FAIL+1)); }
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-echo "== 1. Syntax check (bash -n) =="
+echo "== 1. Syntax check (bash -n & py_compile) =="
 for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh cron.sh detect.sh runner.sh webhook.sh doctor.sh quickstart.sh; do
   if bash -n "$f" 2>/dev/null; then ok "bash -n $f"; else bad "bash -n $f"; fi
 done
+if python3 -m py_compile db-dump.py >/dev/null 2>&1; then
+  rm -rf __pycache__
+  ok "py_compile db-dump.py"
+else
+  bad "py_compile db-dump.py"
+fi
 
 echo "== 2. Missing config error =="
 cp auto_deploy.sh "$TMP/"   # no config.sh next to it
@@ -490,6 +496,14 @@ REF_FILE_HITS="$(grep -rniE "$REF_PAT" --include='*.sh' --include='*.md' --inclu
 [ "$REF_FILE_HITS" -eq 0 ] && ok "no project references in files" || bad "project references found in files ($REF_FILE_HITS)"
 REF_HIST_HITS="$(git log --format='%s%n%b' 2>/dev/null | grep -icE "$REF_PAT")"
 [ "$REF_HIST_HITS" -eq 0 ] && ok "no project references in git history" || bad "project references found in git history ($REF_HIST_HITS)"
+# Security guard: .gitignore must ignore branch configs & secrets, keep example tracked
+git check-ignore -q config.sh && \
+git check-ignore -q config.staging.sh && \
+git check-ignore -q config.dev.sh && \
+git check-ignore -q .env && \
+! git check-ignore -q config.example.sh \
+  && ok "gitignore: branch configs & secrets ignored, example tracked" \
+  || bad "gitignore: security rule regression"
 
 echo "== 21. .env auto-read DATABASE_URL =="
 # Test the parsing logic directly (same logic as in auto_deploy.sh)
@@ -504,8 +518,10 @@ case "$DB_USERINFO" in
   *:*) U="${DB_USERINFO%%:*}"; P="${DB_USERINFO#*:}" ;;
   *)   U="$DB_USERINFO"; P="" ;;
 esac
-H="${DB_HOSTPORT%%/*}"
-D="${DB_HOSTPORT#*/}"
+_host_raw="${DB_HOSTPORT%%/*}"
+_db_raw="${DB_HOSTPORT#*/}"
+H="${_host_raw%%:*}"
+D="${_db_raw%%\?*}"
 [ "$U" = "user" ] && [ "$P" = "P@ss!W0rd" ] && [ "$H" = "localhost" ] && [ "$D" = "mydb" ] && ok "env parse: password with @ (edge)" || bad "env parse: password with @ (edge)"
 # Test 2: no password
 printf 'DATABASE_URL="mysql://user@localhost/db"\n' > "$TMP/envtest/.env"
@@ -517,9 +533,26 @@ case "$DB_USERINFO" in
   *:*) U="${DB_USERINFO%%:*}"; P="${DB_USERINFO#*:}" ;;
   *)   U="$DB_USERINFO"; P="" ;;
 esac
-H="${DB_HOSTPORT%%/*}"
-D="${DB_HOSTPORT#*/}"
+_host_raw="${DB_HOSTPORT%%/*}"
+_db_raw="${DB_HOSTPORT#*/}"
+H="${_host_raw%%:*}"
+D="${_db_raw%%\?*}"
 [ "$U" = "user" ] && [ -z "$P" ] && [ "$H" = "localhost" ] && [ "$D" = "db" ] && ok "env parse: no password" || bad "env parse: no password"
+# Test 3: port + query parameters (real-world framework URL)
+printf 'DATABASE_URL="mysql://user:pass@127.0.0.1:3306/proddb?charset=utf8mb4"\n' > "$TMP/envtest/.env"
+DB_URL="$(grep -E '^DATABASE_URL=' "$TMP/envtest/.env" | head -1 | cut -d= -f2- | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//')"
+DB_REST="${DB_URL#*://}"
+DB_USERINFO="${DB_REST%@*}"
+DB_HOSTPORT="${DB_REST##*@}"
+case "$DB_USERINFO" in
+  *:*) U="${DB_USERINFO%%:*}"; P="${DB_USERINFO#*:}" ;;
+  *)   U="$DB_USERINFO"; P="" ;;
+esac
+_host_raw="${DB_HOSTPORT%%/*}"
+_db_raw="${DB_HOSTPORT#*/}"
+H="${_host_raw%%:*}"
+D="${_db_raw%%\?*}"
+[ "$U" = "user" ] && [ "$P" = "pass" ] && [ "$H" = "127.0.0.1" ] && [ "$D" = "proddb" ] && ok "env parse: port & query params stripped" || bad "env parse: port & query params"
 
 echo "== 22. .env fallback for notification keys (auto-read from app .env) =="
 # Same parsing logic as auto_deploy.sh: if a notif key is empty in config.sh,
