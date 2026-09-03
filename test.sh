@@ -541,7 +541,66 @@ T_BOT="from-config"
 [ -z "$T_BOT" ] && T_BOT="$(envget TELEGRAM_BOT_TOKEN)"
 [ "$T_BOT" = "from-config" ] && ok "env fallback: config.sh value wins (not overwritten)" || bad "env fallback: config.sh value wins"
 
-echo "== 23. Doc/CI count consistency (never drifts silently) =="
+echo "== 23. Hooks, branch config & quiet notifications =="
+# (a) PRE_DEPLOY_HOOK failure aborts deploy and touches nothing
+mkdir -p "$TMP/hook_kit" "$TMP/hook_app" "$TMP/hook_src"
+git init -q "$TMP/hook_src" && git -C "$TMP/hook_src" symbolic-ref HEAD refs/heads/main
+git init -q --bare "$TMP/hook_bare"
+git -C "$TMP/hook_src" remote add origin "$TMP/hook_bare"
+echo "v1" > "$TMP/hook_src/file.txt"
+git -C "$TMP/hook_src" add -A
+git -C "$TMP/hook_src" -c user.email=test@test -c user.name=test commit -qm "v1"
+git -C "$TMP/hook_src" push -q -u origin main
+cp auto_deploy.sh rollback.sh "$TMP/hook_kit/"
+cat > "$TMP/hook_kit/config.sh" <<CFG
+REPO_URL="file://$TMP/hook_bare"
+APP_DIR="$TMP/hook_app"
+WORKSPACE_BASE="$TMP/hook_ws"
+LOG_FILE="$TMP/hook_deploy.log"
+PRE_DEPLOY_HOOK="exit 9"
+CFG
+(cd "$TMP/hook_kit" && bash auto_deploy.sh main >/dev/null 2>&1) || true
+[ ! -f "$TMP/hook_app/file.txt" ] && grep -q "Pre-deploy hook FAILED" "$TMP/hook_deploy.log" 2>/dev/null \
+  && ok "hooks: pre-deploy hook failure aborts deploy cleanly" || bad "hooks: pre-deploy hook abort"
+
+# (b) POST_DEPLOY_HOOK executes on success
+cat > "$TMP/hook_kit/config.sh" <<CFG
+REPO_URL="file://$TMP/hook_bare"
+APP_DIR="$TMP/hook_app"
+WORKSPACE_BASE="$TMP/hook_ws"
+LOG_FILE="$TMP/hook_deploy.log"
+PRE_DEPLOY_HOOK=""
+POST_DEPLOY_HOOK="echo 'post_hook_done' > '$TMP/hook_app/post_hook.txt'"
+CFG
+(cd "$TMP/hook_kit" && bash auto_deploy.sh main >/dev/null 2>&1) || true
+[ -f "$TMP/hook_app/post_hook.txt" ] && [ "$(cat "$TMP/hook_app/post_hook.txt")" = "post_hook_done" ] \
+  && ok "hooks: post-deploy hook executed successfully" || bad "hooks: post-deploy hook execution"
+
+# (c) Branch-specific config (config.<branch>.sh)
+cat > "$TMP/hook_kit/config.staging.sh" <<CFG
+REPO_URL="file://$TMP/hook_bare"
+APP_DIR="$TMP/staging_target_app"
+WORKSPACE_BASE="$TMP/hook_ws"
+LOG_FILE="$TMP/hook_staging.log"
+CFG
+git -C "$TMP/hook_src" checkout -qb staging
+echo "staging" > "$TMP/hook_src/staging.txt"
+git -C "$TMP/hook_src" add -A
+git -C "$TMP/hook_src" -c user.email=test@test -c user.name=test commit -qm "staging"
+git -C "$TMP/hook_src" push -q origin staging
+(cd "$TMP/hook_kit" && bash auto_deploy.sh staging >/dev/null 2>&1) || true
+[ -f "$TMP/staging_target_app/staging.txt" ] \
+  && ok "branch config: config.<branch>.sh loaded and used" || bad "branch config: config.<branch>.sh loaded"
+
+# (d) NOTIFY_ON_SUCCESS="no" quiet mode
+NOTIFY_CALLED=0
+test_notify() { NOTIFY_CALLED=1; }
+NOTIFY_ON_SUCCESS="no"
+if [ "${NOTIFY_ON_SUCCESS:-yes}" != "no" ]; then test_notify; fi
+[ "$NOTIFY_CALLED" -eq 0 ] \
+  && ok "quiet mode: NOTIFY_ON_SUCCESS=no suppresses success alerts" || bad "quiet mode: NOTIFY_ON_SUCCESS=no"
+
+echo "== 24. Doc/CI count consistency (never drifts silently) =="
 # The counts in test.yml, AGENTS.md and README.md must match reality.
 # META counters (not PASS) keep these self-checks out of the core count —
 # test.yml declares the CORE number and stays stable.

@@ -23,6 +23,8 @@ PYTHON_BIN="/home/$SERVER_USER/virtualenv/your-app/3.11/bin/python"  # python ty
 NODE_BIN=""                           # node type: /path/to/node
 BUILD_CMD=""                          # build command (npm run build etc.) — leave "" if none
 MIGRATE_CMD="$PYTHON_BIN -m alembic upgrade head"   # migration command — "" if none
+PRE_DEPLOY_HOOK=""                    # command to run BEFORE rsync touches app (e.g. php artisan down) — aborts if non-zero
+POST_DEPLOY_HOOK=""                   # command to run AFTER restart & before health check (e.g. php artisan up, cache:clear, redis flush)
 RESTART_METHOD="passenger"            # passenger | touch | systemctl | pm2 | supervisor | docker | php | none
 SERVICE_NAME=""                       # systemctl type: service name ("" = SITE_DOMAIN)
 PM2_APP="all"                         # pm2 type: pm2 app name or "all"
@@ -47,6 +49,7 @@ TELEGRAM_CHAT_ID=""                   # Telegram chat ID
 DISCORD_WEBHOOK_URL=""                # Discord channel webhook URL ("" = skip)
 SLACK_WEBHOOK_URL=""                  # Slack incoming webhook URL ("" = skip)
 ALERT_EMAIL=""                        # Notification email address ("" = skip)
+NOTIFY_ON_SUCCESS="yes"               # yes | no — send alerts on successful deploys (no = only notify on failures/rollbacks)
 
 # ── Webhook trigger (optional, VPS only) ────────────────────
 DEPLOY_WEBHOOK_SECRET=""              # "" = webhook disabled. Set a random string & match in GitHub secrets

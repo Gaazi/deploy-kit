@@ -174,6 +174,8 @@ nano config.sh
 | `NODE_BIN` | Node binary path (if build uses a custom node) | Path or `""` | `/home/cpuser/bin/node` |
 | `BUILD_CMD` | Build command (Node/static) | Or leave empty `""` | `npm run build` |
 | `MIGRATE_CMD` | DB migration command | Or leave empty `""` | `$PYTHON_BIN -m alembic upgrade head` |
+| `PRE_DEPLOY_HOOK` | Command to run BEFORE rsync touches app (e.g. `php artisan down`) | Shell command | `php artisan down` |
+| `POST_DEPLOY_HOOK` | Command to run AFTER restart & before health check (e.g. cache clear) | Shell command | `php artisan optimize:clear` |
 | `RESTART_METHOD` | How the app restarts | passenger/touch/systemctl/pm2/supervisor/docker/php/none | `passenger` |
 | `SERVICE_NAME` | systemctl: service name | `""` = uses `SITE_DOMAIN` | `myapp.service` |
 | `PM2_APP` | pm2: app name (Node on VPS) | `all` restarts everything | `myapp` |
@@ -190,6 +192,7 @@ nano config.sh
 | `DISCORD_WEBHOOK_URL` | Discord channel webhook URL (optional) | URL | `https://discord.com/api/webhooks/...` |
 | `SLACK_WEBHOOK_URL` | Slack incoming webhook URL (optional) | URL | `https://hooks.slack.com/services/...` |
 | `ALERT_EMAIL` | Email address for deploy/failure alerts | Email | `alerts@myapp.com` |
+| `NOTIFY_ON_SUCCESS` | Send notifications on success (`no` = failure/rollback alerts only) | yes/no | `yes` |
 | `DEPLOY_WEBHOOK_SECRET` | Webhook trigger (VPS only) — random string, match in GitHub secrets | `""` = disabled | `abc...` |
 | `WEBHOOK_PORT` | Webhook listener port | Number | `9000` |
 | `HEALTH_URL` | Health check URL (optional) | Full URL | `https://myapp.com/health` |
@@ -207,6 +210,8 @@ nano config.sh
 
 **Rule:** Anything that is **not** in your project → leave it as `""` (empty). The script will skip it automatically.
 **Only 2 are required:** `REPO_URL` + `APP_DIR`. Everything else is **optional** — backup, build, migrate, restart, health check, Telegram, Discord, Email, toggle — whatever is empty gets skipped.
+
+> **💡 Multi-Environment / Branch Config:** To deploy different branches (e.g. `dev` staging and `main` production) on the same server, create `config.<branch>.sh` (e.g. `config.dev.sh`). When running `/bin/bash auto_deploy.sh dev`, it automatically loads `config.dev.sh` instead of `config.sh`.
 
 #### 🧰 Every stack — what to put in config (cheat sheet)
 

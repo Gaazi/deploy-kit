@@ -8,10 +8,19 @@
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BRANCH_ARG="${1:-}"
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
+# Branch-specific config: if config.<branch>.sh exists, use it (e.g. config.dev.sh, config.main.sh)
+if [ -n "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH_ARG}.sh" ]; then
+  CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH_ARG}.sh"
+fi
 [ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE" || { echo "❌ config.sh not found"; exit 1; }
 
 BRANCH="${1:-${DEFAULT_BRANCH:-main}}"
+if [ -z "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH}.sh" ]; then
+  CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH}.sh"
+  source "$CONFIG_FILE"
+fi
 APP_DIR="${APP_DIR:-/home/$SERVER_USER/app}"
 WORKSPACE_BASE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}"
 WORKSPACE="$WORKSPACE_BASE/$BRANCH"
@@ -156,6 +165,11 @@ case "$RESTART_METHOD" in
               fi ;;
   ""|none)    : ;;
 esac
+
+# post-deploy hook (optional — e.g. cache clear on rollback)
+if [ -n "$POST_DEPLOY_HOOK" ]; then
+  (cd "$APP_DIR" && eval "$POST_DEPLOY_HOOK") >> "$LOG" 2>&1 || true
+fi
 
 echo "$TARGET_SHA" > "$WORKSPACE/.deployed_sha" 2>/dev/null || true
 # manual rollback = user intervention — clear the failed marker so the

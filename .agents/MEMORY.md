@@ -11,9 +11,9 @@
 - **Resource budget (GitHub):** hosted ~1 min/deploy · native webhook 0 · cron 0 · self-hosted 0 · docs push 0 (paths-ignore)
 - **Resource budget (server):** `--single-branch` clone · SHA-skip instant · log 1MB rotation · DB_BACKUP_KEEP · deploy lock · optional steps only when configured
 - **Required config:** only `REPO_URL` + `APP_DIR`. Everything else optional — empty = skip, never crash.
-- **Test:** `/bin/bash test.sh` — 61 core checks + 4 META (consistency) checks, run before committing. CI runs it on every push to main.
-- **Section 22 (META counters):** auto-verifies test.yml count == core PASS, and AGENTS.md/README.md file counts == actual tracked files. Uses `META_PASS`/`META_FAIL` (NOT `PASS`) so it never inflates the core count. If you add a test/file, you MUST update test.yml (count), AGENTS.md, README.md — Section 22 will fail CI until it matches. Never drift silently.
-- **Deploy flow:** git fetch → rsync → [build] → [db backup] → [migrate] → [restart] → health → notifications (Telegram/Discord/Slack/Email)
+- **Test:** `/bin/bash test.sh` — 65 core checks + 4 META (consistency) checks, run before committing. CI runs it on every push to main.
+- **Section 24 (META counters):** auto-verifies test.yml count == core PASS, and AGENTS.md/README.md file counts == actual tracked files. Uses `META_PASS`/`META_FAIL` (NOT `PASS`) so it never inflates the core count. If you add a test/file, you MUST update test.yml (count), AGENTS.md, README.md — Section 24 will fail CI until it matches. Never drift silently.
+- **Deploy flow:** git fetch → [pre-deploy hook] → rsync → [build] → [db backup] → [migrate] → [restart] → [post-deploy hook] → health → notifications (Telegram/Discord/Slack/Email)
 
 ## File map (what each script does)
 
@@ -36,11 +36,11 @@
 
 - **Required:** `REPO_URL`, `APP_DIR`
 - **Server:** SERVER_USER, SERVER_HOST, SSH_PORT
-- **App/Stack:** APP_TYPE, PYTHON_BIN, NODE_BIN, BUILD_CMD, MIGRATE_CMD, RESTART_METHOD, SERVICE_NAME, PM2_APP, SUPERVISOR_APP, WSGI_FILE, DOCKER_COMPOSE, PHP_FPM_SERVICE, APP_SUBDIR, HEALTH_URL, HEALTH_WAIT, HEALTH_RETRY, AUTO_ROLLBACK_ON_FAIL
+- **App/Stack:** APP_TYPE, PYTHON_BIN, NODE_BIN, BUILD_CMD, MIGRATE_CMD, PRE_DEPLOY_HOOK, POST_DEPLOY_HOOK, RESTART_METHOD, SERVICE_NAME, PM2_APP, SUPERVISOR_APP, WSGI_FILE, DOCKER_COMPOSE, PHP_FPM_SERVICE, APP_SUBDIR, HEALTH_URL, HEALTH_WAIT, HEALTH_RETRY, AUTO_ROLLBACK_ON_FAIL, RESTORE_ON_FAIL
 - **DB:** DB_BACKUP, DB_BACKUP_KEEP, DB_TYPE, DB_HOST, DB_USER, DB_PASS, DB_NAME
-- **Notify:** TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, DISCORD_WEBHOOK_URL, SLACK_WEBHOOK_URL, ALERT_EMAIL
+- **Notify:** TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, DISCORD_WEBHOOK_URL, SLACK_WEBHOOK_URL, ALERT_EMAIL, NOTIFY_ON_SUCCESS
 - **Webhook (VPS):** DEPLOY_WEBHOOK_SECRET, WEBHOOK_PORT
-- **Git/Advanced:** DEPLOY_KEY, WORKSPACE_BASE, TOGGLE_FLAG, SKIP_WHEN_FLAG, DEFAULT_BRANCH, LOG_FILE, RSYNC_EXCLUDES
+- **Git/Advanced:** DEPLOY_KEY, WORKSPACE_BASE, TOGGLE_FLAG, SKIP_WHEN_FLAG, KIT_SELF_UPDATE, DEFAULT_BRANCH, LOG_FILE, RSYNC_EXCLUDES
 
 ## Key design decisions (expensive to rediscover)
 
@@ -76,6 +76,7 @@
 
 ## History (latest first)
 
+- **Hooks, Branch Config & Quiet Alerts (NEW):** Added `PRE_DEPLOY_HOOK` (runs before rsync; aborts if non-zero) and `POST_DEPLOY_HOOK` (runs after restart; non-fatal). Added Multi-Environment branch-specific config support (`config.<branch>.sh` loaded automatically if present). Added `NOTIFY_ON_SUCCESS` toggle (`yes`/`no`, default `yes`) for quiet deploys (failure/rollback alerts only). Upgraded self-test suite to 65 core checks.
 - **Doctor & Multi-Channel Alerts (NEW):** Added `doctor.sh` preflight system diagnostic check. Added multi-channel notification support in `auto_deploy.sh` and `rollback.sh` (Telegram, Discord webhook, Slack webhook, and Email alerts). Enhanced notifications with commit author, commit message, and deploy duration timer. Added `AUTO_ROLLBACK_ON_FAIL` auto-rollback if health check fails. Test suite upgraded to 43 checks (historical — now 55).
 - **Resource principle:** runner trigger only, server all work; `--single-branch` clone; documented in AGENTS.md + README + references
 - **Trigger choice:** hosted / self-hosted (`runner.sh`) / webhook (`webhook.sh`) / cron — README "Choose your trigger" table

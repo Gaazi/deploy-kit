@@ -14,7 +14,12 @@
 
 # ── Config load ─────────────────────────────────────────────
 SCRIPT_DIR="${KIT_REAL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+BRANCH_ARG="${1:-}"
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
+# Branch-specific config: if config.<branch>.sh exists, use it (e.g. config.dev.sh, config.main.sh)
+if [ -n "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH_ARG}.sh" ]; then
+  CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH_ARG}.sh"
+fi
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "❌ config.sh not found — first run: cp config.example.sh config.sh"
   exit 1
@@ -35,6 +40,10 @@ if [ "${KIT_SELF_UPDATE:-no}" = "yes" ] && [ -z "${KIT_SNAP_EXEC:-}" ] && [ -d "
 fi
 
 BRANCH="${1:-${DEFAULT_BRANCH:-main}}"
+if [ -z "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH}.sh" ]; then
+  CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH}.sh"
+  source "$CONFIG_FILE"
+fi
 APP_DIR="${APP_DIR:-/home/$SERVER_USER/app}"
 WORKSPACE_BASE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}"
 WORKSPACE="$WORKSPACE_BASE/$BRANCH"
@@ -237,10 +246,27 @@ COMMIT_MSG="$(git -C "$WORKSPACE" log -1 --pretty=format:'%s' "$NEW_SHA" 2>/dev/
 # HTML-escape the commit message (Telegram parse_mode=HTML breaks on & < >)
 COMMIT_MSG="$(printf '%s' "$COMMIT_MSG" | sed -e 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')"
 
-notify "🚀 <b>Deploy started</b> ($SITE_DOMAIN · $BRANCH)
+if [ "${NOTIFY_ON_SUCCESS:-yes}" != "no" ]; then
+  notify "🚀 <b>Deploy started</b> ($SITE_DOMAIN · $BRANCH)
 <code>${OLD_SHA:0:10}</code> → <code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
 💬 <i>$COMMIT_MSG</i>" "Deploy Started: $SITE_DOMAIN ($BRANCH)"
+fi
 log "Deploying $BRANCH: $OLD_SHA -> $NEW_SHA ($COMMIT_AUTHOR: $COMMIT_MSG)"
+
+# ── 1.5 Pre-deploy hook (optional — e.g. php artisan down, pre-flight checks) ──
+# Runs BEFORE rsync touches APP_DIR — aborts safely if it exits non-zero.
+if [ -n "$PRE_DEPLOY_HOOK" ]; then
+  log "Running pre-deploy hook: $PRE_DEPLOY_HOOK"
+  _hook_dir="$APP_DIR"
+  [ ! -d "$_hook_dir" ] && _hook_dir="$WORKSPACE"
+  if ! (cd "$_hook_dir" && eval "$PRE_DEPLOY_HOOK") >> "$LOG" 2>&1; then
+    notify "❌ <b>Deploy ABORTED (Pre-deploy hook)</b> ($SITE_DOMAIN · $BRANCH) — pre-deploy hook failed
+<code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
+Check server log: $LOG" "Deploy Pre-deploy hook FAILED: $SITE_DOMAIN ($BRANCH)"
+    echo "❌ Pre-deploy hook FAILED — deploy aborted, app untouched." | tee -a "$LOG"
+    exit 1
+  fi
+fi
 
 # ── 2. Rsync to app dir ─────────────────────────────────────
 mkdir -p "$APP_DIR"
@@ -429,6 +455,13 @@ case "$RESTART_METHOD" in
 esac
 [ -n "$RESTART_METHOD" ] && [ "$RESTART_METHOD" != "none" ] && log "Restart done ($RESTART_METHOD)"
 
+# ── 6.5 Post-deploy hook (optional — e.g. cache clear, CDN purge, maintenance off) ──
+# Runs AFTER restart & before health check
+if [ -n "$POST_DEPLOY_HOOK" ]; then
+  log "Running post-deploy hook: $POST_DEPLOY_HOOK"
+  (cd "$APP_DIR" && eval "$POST_DEPLOY_HOOK") >> "$LOG" 2>&1 || log "Post-deploy hook warning: exited non-zero"
+fi
+
 # ── 7. Record SHA ───────────────────────────────────────────
 [ -f "$WORKSPACE/.deployed_sha" ] && cp "$WORKSPACE/.deployed_sha" "$WORKSPACE/.previous_sha" 2>/dev/null || true
 echo "$NEW_SHA" > "$WORKSPACE/.deployed_sha"
@@ -450,10 +483,12 @@ if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
   if [ "$OK" -eq 1 ]; then
     HEALTH_RESULT="ok"
     rm -f "$WORKSPACE/.failed_sha" 2>/dev/null   # deploy succeeded — clear failed marker
-    notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH) — health OK
+    if [ "${NOTIFY_ON_SUCCESS:-yes}" != "no" ]; then
+      notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH) — health OK
 <code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
 💬 <i>$COMMIT_MSG</i>
 ⏱️ Time: ${DEPLOY_DURATION}s" "Deploy Successful: $SITE_DOMAIN ($BRANCH)"
+    fi
     log "Health OK"
   else
     HEALTH_RESULT="FAIL"
@@ -484,10 +519,12 @@ Check server log: $LOG" "Deploy Health FAILED: $SITE_DOMAIN ($BRANCH)"
     fi
   fi
 else
-  notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH)
+  if [ "${NOTIFY_ON_SUCCESS:-yes}" != "no" ]; then
+    notify "✅ <b>Deploy successful</b> ($SITE_DOMAIN · $BRANCH)
 <code>${NEW_SHA:0:10}</code> · 👤 $COMMIT_AUTHOR
 💬 <i>$COMMIT_MSG</i>
 ⏱️ Time: ${DEPLOY_DURATION}s" "Deploy Successful: $SITE_DOMAIN ($BRANCH)"
+  fi
   log "Health check skipped (no URL)"
 fi
 

@@ -19,18 +19,21 @@ Never add deploy work to the workflow — it belongs in auto_deploy.sh (or rollb
 
 ## auto_deploy.sh steps (numbered)
 
-0. **Flag check** — if `DEPLOY_TRIGGER=cron` (set by cron.sh's line) AND `TOGGLE_FLAG` file exists AND `SKIP_WHEN_FLAG` set → exit 0. Only CRON deploys skip — Actions/webhook/runner deploys never carry the trigger marker and always run.
+0. **Config load & Branch Config** — loads `config.<branch>.sh` if it exists, otherwise `config.sh` (allows multi-environment staging & production).
+0.2 **Flag check** — if `DEPLOY_TRIGGER=cron` (set by cron.sh's line) AND `TOGGLE_FLAG` file exists AND `SKIP_WHEN_FLAG` set → exit 0. Only CRON deploys skip — Actions/webhook/runner deploys never carry the trigger marker and always run.
 0.5 **Deploy lock** — mkdir-based `$WORKSPACE_BASE/.deploy-lock` (+ PID file): second concurrent deploy skips (the running one fetches latest anyway); stale lock (dead PID) auto-cleaned; released via trap on EXIT. Rollback uses the same lock and errors out if a deploy is running.
 1. **Workspace** — clone if missing, else `git fetch origin <branch>`. **Safety guard: if `origin/<branch>` can't be resolved (clone/fetch failed, wrong branch) → abort BEFORE rsync — the app dir is never touched.**
 2. **SHA skip** — compare `.deployed_sha`; same SHA → exit 0 (no work, prints "No new commit" on stdout too)
+2.5 **Pre-deploy hook** — if `PRE_DEPLOY_HOOK` set → run in APP_DIR (or WORKSPACE if first deploy). **Failure → Telegram fail alert + abort** BEFORE rsync touches APP_DIR (safe, app untouched).
 3. **Rsync** — `-az --delete` with excludes: `.git/`, `.env`, `*.db`, `*.sqlite3`, `__pycache__/`, `*.pyc`, `node_modules/`, `venv/`, `.venv/`, `*.log`, `media/`, `backups/`, `tests/` + any extra `RSYNC_EXCLUDES` (space-separated). **`APP_SUBDIR` set → only that subfolder is deployed** (monorepos); missing subfolder → abort before touching app dir.
 4. **Build** — if `BUILD_CMD` set → run in APP_DIR. **Failure → Telegram fail alert + abort** (app may be partially updated → hint rollback).
 5. **DB backup** — if `DB_BACKUP=yes` + DB_* set → mysqldump/pg_dump to `$WORKSPACE_BASE/backups/<branch>/` (outside the app dir — web-safe), keep `DB_BACKUP_KEEP` (default 7); sqlite = file copy, keep 7
 6. **Migrate** — if `MIGRATE_CMD` set → run in APP_DIR. **Failure → Telegram fail alert + abort** (hint: restore DB dump then rollback).
 7. **Restart** — per `RESTART_METHOD` (passenger → touch tmp/restart.txt; systemctl → restart `$SERVICE_NAME` or `$SITE_DOMAIN`; pm2 → `pm2 restart $PM2_APP`; supervisor → `supervisorctl restart $SUPERVISOR_APP`; docker → compose down/up; php → reload fpm; none/"" → skip). All restart failures are non-fatal (`|| true`) — deploy never crashes because a service binary is missing.
+7.5 **Post-deploy hook** — if `POST_DEPLOY_HOOK` set → run in APP_DIR after restart and before health check (e.g. cache clear, CDN purge, maintenance off).
 8. **Record SHA** — write `.deployed_sha` in workspace
 9. **Health check** — only if HEALTH_URL resolves (empty → skip, **no sleep**); `sleep $HEALTH_WAIT` (default 8) → `curl -m 15` retried `$HEALTH_RETRY` (default 3) times with 5s gaps; OK → success alert, fail → warning alert
-10. **Telegram** — start/success/fail alerts via `notify()` (only if token+chat set)
+10. **Notifications** — start/success/fail alerts via `notify()` (Telegram/Discord/Slack/Email). If `NOTIFY_ON_SUCCESS=no`, success alerts are suppressed (failure/rollback alerts only).
 
 Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 

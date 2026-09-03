@@ -8,7 +8,17 @@
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="${1:-${SCRIPT_DIR}/config.sh}"
+if [ -n "$1" ]; then
+  if [ -f "$1" ]; then
+    CONFIG_FILE="$1"
+  elif [ -f "${SCRIPT_DIR}/config.${1}.sh" ]; then
+    CONFIG_FILE="${SCRIPT_DIR}/config.${1}.sh"
+  else
+    CONFIG_FILE="$1"
+  fi
+else
+  CONFIG_FILE="${SCRIPT_DIR}/config.sh"
+fi
 
 PASS_COUNT=0
 WARN_COUNT=0
@@ -79,6 +89,9 @@ source "$CONFIG_FILE"
 [ -n "$APP_DIR" ] && ok "APP_DIR: $APP_DIR" || fail "APP_DIR is missing in config.sh"
 [ -n "$SITE_DOMAIN" ] && info "Domain: $SITE_DOMAIN" || warn "SITE_DOMAIN is not set"
 [ -n "$APP_TYPE" ] && info "App Type: $APP_TYPE" || info "App Type: default"
+[ -n "$PRE_DEPLOY_HOOK" ] && info "Pre-deploy hook: $PRE_DEPLOY_HOOK"
+[ -n "$POST_DEPLOY_HOOK" ] && info "Post-deploy hook: $POST_DEPLOY_HOOK"
+[ -n "$NOTIFY_ON_SUCCESS" ] && info "Notify on success: $NOTIFY_ON_SUCCESS"
 
 # ── 4. Directories & Permissions ────────────────────────────
 echo ""

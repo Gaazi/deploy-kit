@@ -24,6 +24,8 @@
 | `NODE_BIN` | Node binary (node type) | `""` |
 | `BUILD_CMD` | Build command (Node/static) — `""` = skip | `npm run build` |
 | `MIGRATE_CMD` | Migration command — `""` = skip | `$PYTHON_BIN -m alembic upgrade head` |
+| `PRE_DEPLOY_HOOK` | Command to run BEFORE rsync touches app (e.g. `php artisan down`) — aborts if non-zero | `php artisan down` |
+| `POST_DEPLOY_HOOK` | Command to run AFTER restart & before health check (e.g. `php artisan up`, cache clear) | `php artisan optimize:clear` |
 | `RESTART_METHOD` | passenger \| touch \| systemctl \| pm2 \| supervisor \| docker \| php \| none/`""` | `passenger` |
 | `SERVICE_NAME` | systemctl: service name — `""` = `SITE_DOMAIN` | `myapp.service` |
 | `PM2_APP` | pm2: app name — `all` restarts everything (missing pm2 = no crash) | `all` |
@@ -55,6 +57,7 @@ Backup verification: every dump is validated (non-empty + correct signature — 
 | `DISCORD_WEBHOOK_URL` | Discord webhook URL — `""` = no alerts. If empty, auto-read from app's `.env` |
 | `SLACK_WEBHOOK_URL` | Slack incoming webhook URL — `""` = no alerts. If empty, auto-read from app's `.env` |
 | `ALERT_EMAIL` | Email address for alerts (uses `mail`/`sendmail`) — `""` = no alerts |
+| `NOTIFY_ON_SUCCESS` | yes \| no (default `yes`) — send alerts on successful deploys (`no` = failure/rollback alerts only) |
 
 ## Webhook trigger (optional, VPS only)
 | Key | What | Default |
