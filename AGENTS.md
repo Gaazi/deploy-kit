@@ -28,10 +28,10 @@ A lightweight, config-driven auto-deployment kit for any project (Python / Node 
 
 ## User
 
-- Speaks Roman Urdu — respond in Roman Urdu
 - Wants practical, direct answers — no long explanations
-- **All docs and files in this project: SIMPLE ENGLISH** (user request — the whole kit is English)
+- **All docs and files in this project: SIMPLE ENGLISH** (the whole kit is English — keeps it public-ready)
 - Code comments in English are fine
+- Chat language follows the user's own preference (not part of this repo)
 
 ---
 
