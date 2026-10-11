@@ -9,9 +9,10 @@ Updated: 2026-10-11
 - Shared pointers initialized; self-test CI enabled on dev; fixes committed and pushed to dev.
 - User-authorized dev to demo fast-forward completed and pushed; demo matches verified source 2e32a64.
 - Latest source CI passed: run 38156969172 (80 core checks, 4 consistency checks).
+- User-authorized demo to main fast-forward completed and pushed; main matches demo at 2e32a64.
+- Main CI passed: run 38160541482 (80 core checks, 4 consistency checks).
 ## Pending
-- Merge dev to main only when explicitly requested.
 - Live server verification is not performed; it needs an explicit deployment request.
 - Full local integration tests require rsync; Git Bash lacks it and WSL is unavailable.
 ## Next Step
-- Review demo; merge to main or live deployment only on explicit request.
+- Live server verification only on explicit request; continue development on dev.
