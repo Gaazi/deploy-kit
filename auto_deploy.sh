@@ -228,10 +228,12 @@ trap 'rm -rf "$LOCK_DIR" 2>/dev/null; rm -f "${KIT_SNAP:-}" 2>/dev/null' EXIT
 # --single-branch: only this branch's history — minimum network + disk
 if [ ! -d "$WORKSPACE/.git" ]; then
   GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i \"$DEPLOY_KEY\" -o StrictHostKeyChecking=no}" \
-    git clone --single-branch --branch "$BRANCH" "$REPO_URL" "$WORKSPACE" >> "$LOG" 2>&1
+    git clone --single-branch --branch "$BRANCH" "$REPO_URL" "$WORKSPACE" >> "$LOG" 2>&1 \
+    || { echo "❌ git clone failed — deploy aborted, app untouched" | tee -a "$LOG"; exit 1; }
 else
   GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i \"$DEPLOY_KEY\" -o StrictHostKeyChecking=no}" \
-    git -C "$WORKSPACE" fetch origin "$BRANCH" >> "$LOG" 2>&1
+    git -C "$WORKSPACE" fetch origin "$BRANCH" >> "$LOG" 2>&1 \
+    || { echo "❌ git fetch failed — deploy aborted, app untouched" | tee -a "$LOG"; exit 1; }
 fi
 
 # Safety guard: abort if the branch is missing on the remote (clone/fetch failed).
@@ -251,8 +253,10 @@ if ! git -C "$WORKSPACE" rev-parse --verify -q "origin/$BRANCH" >/dev/null 2>&1;
   exit 1
 fi
 
-git -C "$WORKSPACE" checkout "$BRANCH" >> "$LOG" 2>&1
-git -C "$WORKSPACE" reset --hard "origin/$BRANCH" >> "$LOG" 2>&1
+git -C "$WORKSPACE" checkout "$BRANCH" >> "$LOG" 2>&1 \
+  || { echo "❌ git checkout failed — app untouched" | tee -a "$LOG"; exit 1; }
+git -C "$WORKSPACE" reset --hard "origin/$BRANCH" >> "$LOG" 2>&1 \
+  || { echo "❌ git reset failed — app untouched" | tee -a "$LOG"; exit 1; }
 NEW_SHA="$(git -C "$WORKSPACE" rev-parse HEAD)"
 
 # Safety guard: a real commit must be resolved before touching the app dir.
@@ -313,7 +317,8 @@ if [ ! -d "$SRC_DIR" ]; then
   echo "❌ APP_SUBDIR not found: $SRC_DIR — deploy aborted, app untouched" | tee -a "$LOG"
   exit 1
 fi
-rsync -az --delete "${RSYNC_ARGS[@]}" "$SRC_DIR/" "$APP_DIR/" >> "$LOG" 2>&1
+rsync -az --delete "${RSYNC_ARGS[@]}" "$SRC_DIR/" "$APP_DIR/" >> "$LOG" 2>&1 \
+  || { echo "❌ rsync failed — deploy incomplete, retry after fixing the error" | tee -a "$LOG"; exit 1; }
 
 # ── 3. Build (if configured) ────────────────────────────────
 if [ -n "$BUILD_CMD" ]; then
@@ -544,7 +549,13 @@ if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
       PREV_SHA="$(cat "$WORKSPACE/.previous_sha" 2>/dev/null || echo '')"
       if [ -n "$PREV_SHA" ]; then
         log "Health FAILED — initiating auto-rollback to $PREV_SHA"
-        ROLLBACK_AUTO=1 DEPLOY_LOCK_HELD=1 /bin/bash "${SCRIPT_DIR}/rollback.sh" "$BRANCH" "$PREV_SHA" >> "$LOG" 2>&1 || true
+        if ! ROLLBACK_AUTO=1 DEPLOY_LOCK_HELD=1 /bin/bash "${SCRIPT_DIR}/rollback.sh" "$BRANCH" "$PREV_SHA" >> "$LOG" 2>&1; then
+          echo "$OLD_SHA" > "$WORKSPACE/.deployed_sha"
+          notify "❌ <b>Health FAILED — Auto-rollback FAILED</b> ($SITE_DOMAIN · $BRANCH)
+Check server log: $LOG" "Deploy Auto-rollback FAILED: $SITE_DOMAIN ($BRANCH)"
+          echo "❌ Auto-rollback FAILED — check the log and retry rollback" | tee -a "$LOG"
+          exit 1
+        fi
         # stop re-deploy loop: mark the broken SHA as "failed" so the next
         # cron/Actions trigger skips it (files are already rolled back to PREV_SHA).
         # .deployed_sha stays PREV_SHA (rollback.sh set it) — manual rollback stays correct.

@@ -760,6 +760,8 @@ git -C "$TMP/hook_src" push -q origin main
 grep -q "DB backup INVALID (failed)" "$TMP/bk.log" 2>/dev/null \
   && ok "failed dump is reported as INVALID (never restored)" || bad "failed dump not flagged (partial dump treated as valid)"
 
+source tests/deploy-failures.sh
+
 echo "== 25. Doc/CI count consistency (never drifts silently) =="
 # The counts in test.yml, AGENTS.md and README.md must match reality.
 # META counters (not PASS) keep these self-checks out of the core count —

@@ -11,7 +11,7 @@
 - **Resource budget (GitHub):** hosted ~1 min/deploy · native webhook 0 · cron 0 · self-hosted 0 · docs push 0 (paths-ignore)
 - **Resource budget (server):** `--single-branch` clone · SHA-skip instant · log 1MB rotation · DB_BACKUP_KEEP · deploy lock · optional steps only when configured
 - **Required config:** only `REPO_URL` + `APP_DIR`. Everything else optional — empty = skip, never crash.
-- **Test:** `/bin/bash test.sh` — 74 core checks + 4 META (consistency) checks, run before committing. CI runs it on every push to main.
+- **Test:** `/bin/bash test.sh` — 80 core checks + 4 META (consistency) checks, run before committing. CI runs it on every push to main.
 - **Section 24 (META counters):** auto-verifies test.yml count == core PASS, and AGENTS.md/README.md file counts == actual tracked files. Uses `META_PASS`/`META_FAIL` (NOT `PASS`) so it never inflates the core count. If you add a test/file, you MUST update test.yml (count), AGENTS.md, README.md — Section 24 will fail CI until it matches. Never drift silently.
 - **Deploy flow:** git fetch → [pre-deploy hook] → rsync → [build] → [db backup] → [migrate] → [restart] → [post-deploy hook] → health → notifications (Telegram/Discord/Slack/Email)
 
@@ -76,6 +76,8 @@
 
 ## History (latest first)
 
+- **Deploy failure guards (2026-10-11, 80 checks):** clone/fetch/checkout/reset and rsync errors abort before later steps and SHA recording. Failed auto-rollback no longer claims success or blocks retry. Six regression checks live in `tests/deploy-failures.sh`. Self-test CI now runs on dev as well as main; shared pointers and PROJECT_STATE.md are initialized.
+
 - **Hooks, Branch Config & Quiet Alerts (NEW):** Added `PRE_DEPLOY_HOOK` (runs before rsync; aborts if non-zero) and `POST_DEPLOY_HOOK` (runs after restart; non-fatal). Added Multi-Environment branch-specific config support (`config.<branch>.sh` loaded automatically if present). Added `NOTIFY_ON_SUCCESS` toggle (`yes`/`no`, default `yes`) for quiet deploys (failure/rollback alerts only). Hardened DATABASE_URL parsing (strips port & query params) and .gitignore security guard. Self-test suite upgraded to 68 core checks.
 - **Doctor & Multi-Channel Alerts (NEW):** Added `doctor.sh` preflight system diagnostic check. Added multi-channel notification support in `auto_deploy.sh` and `rollback.sh` (Telegram, Discord webhook, Slack webhook, and Email alerts). Enhanced notifications with commit author, commit message, and deploy duration timer. Added `AUTO_ROLLBACK_ON_FAIL` auto-rollback if health check fails. Test suite upgraded to 43 checks (historical — now 55).
 - **Resource principle:** runner trigger only, server all work; `--single-branch` clone; documented in AGENTS.md + README + references
@@ -108,7 +110,7 @@
 
 ## CURRENT STATUS (2026-10-11)
 
-- **Test count:** 74 checks (`test.sh`), CI name synced in test.yml. When adding tests, update: test.sh → test.yml name → MEMORY self-test line.
+- **Test count:** 80 checks (`test.sh`), CI name synced in test.yml. When adding tests, update: test.sh → test.yml name → MEMORY self-test line.
 - **Branches:** `main` = `origin/main` (pushed). `origin/dev` carries 1 extra docs commit — left unmerged on purpose (only the user merges to main).
 - **NO AUTO-MERGE (user rule, CRITICAL):** Never merge dev→main (or promote branches) on my own. Only merge/push-to-main when the USER explicitly says so (e.g. "merge karo", "merge and push"). Committing to dev + pushing dev is fine any time; promoting to main requires explicit user instruction.
 - **Standalone repo public-ready:** zero related-project references anywhere (files, git history subjects+bodies, refs). Git history was filter-branch rewritten — NEVER reintroduce project names in commits.

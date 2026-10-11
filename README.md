@@ -76,7 +76,7 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 
 ---
 
-## 📁 Files (24 + .agents/)
+## 📁 Files (32 + .agents/)
 
 | File | What it does |
 |------|---------------|
@@ -103,6 +103,11 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 | `.htaccess` | **Blocks web access if kit is inside the app dir** — protects `config.sh` (DB_PASS, keys) from the browser |
 | `opencode.json` | Editor/tool config for coding agents |
 | `AGENTS.md` + `.agents/` | Agent rules + memory (for AI agents / future developers) |
+| `LICENSE` | MIT license |
+| `PROJECT_STATE.md` | Current work status |
+| `tests/deploy-failures.sh` | Tests for failed deploy commands and rollback |
+| `CLAUDE.md`, `GEMINI.md`, `.clinerules` | Agent rule pointers (3 files) |
+| `.github/copilot-instructions.md`, `.kilocode/rules/main.md`, `.roo/rules/main.md` | Agent rule pointers (3 files) |
 
 ---
 
@@ -620,7 +625,7 @@ README.md
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (24 files) — **or skip: the hosted workflow bootstraps it on first push**
+- [ ] `~/deploy-kit/` on the server (32 files) — **or skip: the hosted workflow bootstraps it on first push**
 - [ ] Created `config.sh` (wizard: `/bin/bash setup.sh`)
 - [ ] `chmod +x *.sh`
 - [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅

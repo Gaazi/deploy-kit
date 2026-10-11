@@ -1,3 +1,10 @@
+<!-- shared-agent:start -->
+Read `~/.agents/global-agent-rules/AGENTS.md` before project rules.
+Read `PROJECT_STATE.md` first. Update it after each completed task.
+On first visit or a changed master, run `python ~/.agents/manage_agents.py project sync --repo <project-root>`.
+Shared master SHA256: `e845210408af1e492c66a3599e1e4f4e15e5644a7ff049aac6807d4ffcbb97be`.
+<!-- shared-agent:end -->
+
 # Project Agent Rules — Deploy Kit
 
 > Shared project instructions for AI coding agents working on the Deploy Kit.
@@ -84,7 +91,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 
 ---
 
-## File Structure (24 files + .agents/)
+## File Structure (32 files + .agents/)
 
 | File | Purpose |
 |------|---------|
@@ -112,6 +119,10 @@ When you modify the kit, this table tells you which files to update. Anything no
 | `opencode.json` | Editor/tool config for coding agents |
 | `AGENTS.md` | Project agent rules (this file) |
 | `LICENSE` | MIT |
+| `PROJECT_STATE.md` | Current work status |
+| `tests/deploy-failures.sh` | Deploy failure regression checks |
+| `CLAUDE.md`, `GEMINI.md`, `.clinerules` | Agent rule pointers (3 files) |
+| `.github/copilot-instructions.md`, `.kilocode/rules/main.md`, `.roo/rules/main.md` | Agent rule pointers (3 files) |
 
 ---
 

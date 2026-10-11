@@ -22,10 +22,11 @@ Never add deploy work to the workflow — it belongs in auto_deploy.sh (or rollb
 0. **Config load & Branch Config** — loads `config.<branch>.sh` if it exists, otherwise `config.sh` (allows multi-environment staging & production).
 0.2 **Flag check** — if `DEPLOY_TRIGGER=cron` (set by cron.sh's line) AND `TOGGLE_FLAG` file exists AND `SKIP_WHEN_FLAG` set → exit 0. Only CRON deploys skip — Actions/webhook/runner deploys never carry the trigger marker and always run.
 0.5 **Deploy lock** — mkdir-based `$WORKSPACE_BASE/.deploy-lock` (+ PID file): second concurrent deploy skips (the running one fetches latest anyway); stale lock (dead PID) auto-cleaned; released via trap on EXIT. Rollback uses the same lock and errors out if a deploy is running.
-1. **Workspace** — clone if missing, else `git fetch origin <branch>`. **Safety guard: if `origin/<branch>` can't be resolved (clone/fetch failed, wrong branch) → abort BEFORE rsync — the app dir is never touched.**
+1. **Workspace** — clone if missing, else `git fetch origin <branch>`. Clone, fetch, checkout and reset must succeed, and `origin/<branch>` must resolve. Any failure aborts before rsync, even when a stale remote reference exists.
 2. **SHA skip** — compare `.deployed_sha`; same SHA → exit 0 (no work, prints "No new commit" on stdout too)
 2.5 **Pre-deploy hook** — if `PRE_DEPLOY_HOOK` set → run in APP_DIR (or WORKSPACE if first deploy). **Failure → Telegram fail alert + abort** BEFORE rsync touches APP_DIR (safe, app untouched).
 3. **Rsync** — `-az --delete` with excludes: `.git/`, `.env`, `*.db`, `*.sqlite3`, `__pycache__/`, `*.pyc`, `node_modules/`, `venv/`, `.venv/`, `*.log`, `media/`, `backups/`, `tests/`, `deploy_kit/`, `deploy-kit/`, `config.sh`, `config.*.sh`, `.htaccess`, `.htaccess.` + any extra `RSYNC_EXCLUDES` (space-separated). `.htaccess` is excluded on purpose (a real deployment lesson: `--delete` wiped the server's web-server config → 404) — so a `.htaccess` that lives in the REPO is never deployed either; keep server rewrites on the server. **`APP_SUBDIR` set → only that subfolder is deployed** (monorepos); missing subfolder → abort before touching app dir.
+   Rsync failure aborts before build, migration and SHA recording; fix the error and retry. The app may be partially synced.
 4. **Build** — if `BUILD_CMD` set → run in APP_DIR. **Failure → Telegram fail alert + abort** (app may be partially updated → hint rollback).
 5. **DB backup** — if `DB_BACKUP=yes` + DB_* set → mysqldump/pg_dump (or `db-dump.py` when the CLI is missing) to `$WORKSPACE_BASE/backups/<branch>/` (outside the app dir — web-safe), keep `DB_BACKUP_KEEP` fresh (default 7); older dumps are gzip-compressed, never deleted (the `.gz` archive is capped at `DB_BACKUP_KEEP` and pruned only once 21+ archives exist); sqlite = file copy. A dump tool that FAILS is flagged (`DB backup INVALID (failed)`) even when it left a valid-looking header behind.
 6. **Migrate** — if `MIGRATE_CMD` set → run in APP_DIR. **Failure → Telegram fail alert + abort** (hint: restore DB dump then rollback).
@@ -33,6 +34,7 @@ Never add deploy work to the workflow — it belongs in auto_deploy.sh (or rollb
 7.5 **Post-deploy hook** — if `POST_DEPLOY_HOOK` set → run in APP_DIR after restart and before health check (e.g. cache clear, CDN purge, maintenance off).
 8. **Record SHA** — write `.deployed_sha` in workspace
 9. **Health check** — only if HEALTH_URL resolves (empty → skip, **no sleep**); `sleep $HEALTH_WAIT` (default 8) → `curl -m 15` retried `$HEALTH_RETRY` (default 3) times with 5s gaps; OK → success alert, fail → warning alert
+   Auto-rollback is reported as completed only when rollback.sh succeeds. On failure, deploy exits non-zero, restores the previous deploy marker for retry, and does not write the failed-SHA skip marker.
 10. **Notifications** — start/success/fail alerts via `notify()` (Telegram/Discord/Slack/Email). If `NOTIFY_ON_SUCCESS=no`, success alerts are suppressed (failure/rollback alerts only).
 
 Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
@@ -60,6 +62,7 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 - bash -n on every script; missing-config error; missing-required-vars error
 - Full local integration test: real file:// git repo → deploy → idempotent skip → new commit → rollback (explicit SHA **and** no-SHA "previous version")
 - Backup rotation + failed-dump verdict, notification gate (stub `mail`), KIT_SNAP early-exit, deploy-lock, hooks, branch config, cron/webhook/doctor checks
+- Six command-failure checks in `tests/deploy-failures.sh`; CI runs the 80 core checks and four consistency checks on `dev` and `main` pushes and pull requests.
 - No host state is touched: `cron.sh` runs against a fake `crontab` (the real crontab is NEVER replaced). Everything lives in a temp dir; the only outbound calls are the notification mocks, which now time out.
 
 ## Quickstart (quickstart.sh) — 1 command, everything

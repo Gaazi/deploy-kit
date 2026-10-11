@@ -1,11 +1,11 @@
 name: "Deploy Kit: Self-Test"
 
-# Runs test.sh on every push/PR to main — the kit verifies itself.
+# Runs test.sh on development and stable pushes, plus pull requests.
 # Keeps the public repo trustworthy: if a change breaks a script, CI fails.
 
 on:
   push:
-    branches: [main]
+    branches: [dev, main]
     # The self-test also guards README/AGENTS counts, .agents docs and
     # db-dump.py syntax — a docs-only or .py-only change must still run it.
     paths:
@@ -13,6 +13,7 @@ on:
       - '*.py'
       - '*.md'
       - '*.example'
+      - 'tests/**'
       - '.agents/**'
       - '.github/workflows/*.yml*'
   pull_request:
@@ -21,13 +22,14 @@ on:
       - '*.py'
       - '*.md'
       - '*.example'
+      - 'tests/**'
       - '.agents/**'
       - '.github/workflows/*.yml*'
   workflow_dispatch:
 
 jobs:
   selftest:
-    name: Run test.sh (74 checks)
+    name: Run test.sh (80 checks)
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
