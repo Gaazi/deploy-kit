@@ -383,7 +383,8 @@ archive_old_backups() {
 if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ]; then
   BK_DIR="$WORKSPACE_BASE/backups/$BRANCH"   # OUTSIDE app dir — not web-accessible, keeps app dir light
   mkdir -p "$BK_DIR"
-  TS="$(date +%Y%m%d_%H%M%S)"
+  # The lock serializes deploys, but two can still finish in the same second.
+  TS="$(date +%Y%m%d_%H%M%S)_$$"
   KEEP="${DB_BACKUP_KEEP:-7}"   # how many old dumps to keep (lighter disk = smaller number)
   case "$KEEP" in ''|*[!0-9]*) KEEP=7;; esac   # safety: non-numeric → default 7
   [ "$KEEP" -lt 1 ] && KEEP=1                  # safety: 0 would delete ALL backups

@@ -106,8 +106,8 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 | `LICENSE` | MIT license |
 | `PROJECT_STATE.md` | Current work status |
 | `tests/deploy-failures.sh` | Tests for failed deploy commands and rollback |
-| `CLAUDE.md`, `GEMINI.md`, `.clinerules` | Agent rule pointers (3 files) |
-| `.github/copilot-instructions.md`, `.kilocode/rules/main.md`, `.roo/rules/main.md` | Agent rule pointers (3 files) |
+| `CLAUDE.md`, `GEMINI.md`, `.clinerules` | Agent rule pointers (three pointer files) |
+| `.github/copilot-instructions.md`, `.kilocode/rules/main.md`, `.roo/rules/main.md` | Agent rule pointers (three pointer files) |
 
 ---
 

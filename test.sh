@@ -740,8 +740,8 @@ done
 BKDIR="$BKWS/backups/main"
 GZ_N="$(ls -1 "$BKDIR"/*.sql.gz 2>/dev/null | wc -l | tr -d ' ')"
 FRESH_N="$(ls -1 "$BKDIR"/*.sql 2>/dev/null | wc -l | tr -d ' ')"
-[ "${GZ_N:-0}" -ge 1 ] && ok "backup rotation: old dumps gzipped (never deleted)" || bad "backup rotation: no .gz archive created (rotation dead?)"
-[ "${FRESH_N:-0}" -le 2 ] && ok "backup rotation: only DB_BACKUP_KEEP fresh dumps kept" || bad "backup rotation: $FRESH_N fresh dumps (KEEP=2)"
+[ "${GZ_N:-0}" -eq 2 ] && ok "backup rotation: old dumps gzipped (never deleted)" || bad "backup rotation: expected 2 archives, got $GZ_N (backup overwritten or rotation failed)"
+[ "${FRESH_N:-0}" -eq 2 ] && ok "backup rotation: only DB_BACKUP_KEEP fresh dumps kept" || bad "backup rotation: $FRESH_N fresh dumps (KEEP=2)"
 
 # A dump tool that fails AFTER printing a valid-looking header must never count
 # as a valid backup: RESTORE_ON_FAIL would restore that truncated file and wipe

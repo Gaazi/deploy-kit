@@ -76,6 +76,7 @@
 
 ## History (latest first)
 
+- **Backup collision fix (2026-10-11):** fast consecutive deploys shared a second-resolution backup filename and overwrote dumps. Filenames now include the deploy PID; the rotation test requires exactly two fresh and two archived dumps after four deploys.
 - **Deploy failure guards (2026-10-11, 80 checks):** clone/fetch/checkout/reset and rsync errors abort before later steps and SHA recording. Failed auto-rollback no longer claims success or blocks retry. Six regression checks live in `tests/deploy-failures.sh`. Self-test CI now runs on dev as well as main; shared pointers and PROJECT_STATE.md are initialized.
 
 - **Hooks, Branch Config & Quiet Alerts (NEW):** Added `PRE_DEPLOY_HOOK` (runs before rsync; aborts if non-zero) and `POST_DEPLOY_HOOK` (runs after restart; non-fatal). Added Multi-Environment branch-specific config support (`config.<branch>.sh` loaded automatically if present). Added `NOTIFY_ON_SUCCESS` toggle (`yes`/`no`, default `yes`) for quiet deploys (failure/rollback alerts only). Hardened DATABASE_URL parsing (strips port & query params) and .gitignore security guard. Self-test suite upgraded to 68 core checks.
