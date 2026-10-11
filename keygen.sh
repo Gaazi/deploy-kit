@@ -56,12 +56,24 @@ if [ ! -f "$KEY" ]; then
 else
   echo "🔑 Using existing key: $KEY"
 fi
+# The PAIR must exist: a private key without its .pub cannot be added to
+# GitHub, and an empty .pub made step 3 falsely report "already authorized".
+if [ ! -s "$KEY" ] || [ ! -s "$KEY.pub" ]; then
+  echo "❌ No usable key pair at $KEY / $KEY.pub"
+  echo "   ssh-keygen could not write there (missing folder or permissions)."
+  echo "   Fix the path or remove the broken key, then run keygen.sh again."
+  exit 1
+fi
 chmod 600 "$KEY" 2>/dev/null
 
 # ── 2. Set DEPLOY_KEY in config.sh ───────────────
 if [ -f "$CONFIG_FILE" ]; then
   if grep -q "^DEPLOY_KEY=" "$CONFIG_FILE"; then
+    # config.sh holds secrets: keep its mode (an in-place rewrite must not
+    # silently widen permissions to the umask default)
+    _cfg_perm="$(stat -c %a "$CONFIG_FILE" 2>/dev/null || stat -f %Lp "$CONFIG_FILE" 2>/dev/null || echo '')"
     sed -i "s|^DEPLOY_KEY=.*|DEPLOY_KEY=\"$KEY\"|" "$CONFIG_FILE"
+    [ -n "$_cfg_perm" ] && chmod "$_cfg_perm" "$CONFIG_FILE" 2>/dev/null
   else
     echo "DEPLOY_KEY=\"$KEY\"" >> "$CONFIG_FILE"
   fi
@@ -69,7 +81,8 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 # ── 3. Authorize GitHub Actions → server login ───
-if grep -qF "$(cat "$KEY.pub" 2>/dev/null)" "$HOME/.ssh/authorized_keys" 2>/dev/null; then
+PUB="$(cat "$KEY.pub" 2>/dev/null)"
+if [ -n "$PUB" ] && grep -qF "$PUB" "$HOME/.ssh/authorized_keys" 2>/dev/null; then
   echo "✅ Public key already authorized in ~/.ssh/authorized_keys"
 else
   # ensure trailing newline so new key doesn't merge into last existing line

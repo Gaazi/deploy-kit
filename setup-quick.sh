@@ -76,7 +76,7 @@ HEALTH_RETRY="3"
 AUTO_ROLLBACK_ON_FAIL="no"
 RESTORE_ON_FAIL="no"
 DEPLOY_KEY=""
-WORKSPACE_BASE="/home/$SERVER_USER/deploy-workspace"
+WORKSPACE_BASE=""
 TOGGLE_FLAG=""
 SKIP_WHEN_FLAG=""
 KIT_SELF_UPDATE=""
@@ -85,10 +85,22 @@ LOG_FILE=""
 RSYNC_EXCLUDES=""
 
 # ── Parse pasted KEY=VALUE lines (all keys, including advanced) ──
-while IFS='=' read -r key val; do
+# Split on the FIRST "=" only: `IFS='=' read` silently drops a trailing "="
+# (a password like `DB_PASS=MyS3cret=` became "MyS3cret").
+while IFS= read -r line; do
+  case "$line" in
+    *=*) key="${line%%=*}"; val="${line#*=}" ;;
+    *)   continue ;;
+  esac
   # trim whitespace around key and value for tolerance (e.g. "KEY = value")
   key="$(printf '%s' "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
   val="$(printf '%s' "$val" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  # drop ONE layer of surrounding quotes: pasting a line from config.example.sh
+  # (DB_PASS="secret") would otherwise store the quote characters in the value
+  case "$val" in
+    \"*\") val="${val#\"}"; val="${val%\"}" ;;
+    \'*\') val="${val#\'}"; val="${val%\'}" ;;
+  esac
   [ -z "$key" ] && continue
   case "$key" in
     SERVER_USER)       SERVER_USER="$val" ;;
@@ -113,6 +125,7 @@ while IFS='=' read -r key val; do
     PHP_FPM_SERVICE)   PHP_FPM_SERVICE="$val" ;;
     APP_SUBDIR)        APP_SUBDIR="$val" ;;
     DB_BACKUP)         DB_BACKUP="$val" ;;
+    DB_BACKUP_KEEP)    DB_BACKUP_KEEP="$val" ;;
     DB_TYPE)           DB_TYPE="$val" ;;
     DB_HOST)           DB_HOST="$val" ;;
     DB_USER)           DB_USER="$val" ;;
@@ -150,6 +163,10 @@ fi
 
 # PYTHON_BIN default follows the pasted SERVER_USER/SITE_DOMAIN unless overridden
 PYTHON_BIN="${PYTHON_BIN:-/home/$SERVER_USER/virtualenv/$SITE_DOMAIN/3.11/bin/python}"
+# WORKSPACE_BASE default must use the FINAL SERVER_USER: computing it above
+# the parse loop baked in the "cpuser" placeholder, and the deploy then tried
+# to lock /home/cpuser/deploy-workspace (not writable → every deploy skipped).
+WORKSPACE_BASE="${WORKSPACE_BASE:-/home/$SERVER_USER/deploy-workspace}"
 
 # ── Create config.sh ──
 cat > config.sh <<EOF
@@ -180,7 +197,7 @@ APP_SUBDIR="$(esc "$APP_SUBDIR")"
 
 # ── Database ──
 DB_BACKUP="$(esc "$DB_BACKUP")"
-DB_BACKUP_KEEP="7"
+DB_BACKUP_KEEP="$(esc "$DB_BACKUP_KEEP")"
 DB_TYPE="$(esc "$DB_TYPE")"
 DB_HOST="$(esc "$DB_HOST")"
 DB_USER="$(esc "$DB_USER")"
@@ -217,7 +234,8 @@ LOG_FILE="$(esc "$LOG_FILE")"
 RSYNC_EXCLUDES="$(esc "$RSYNC_EXCLUDES")"
 EOF
 
-chmod 600 config.sh
+chmod 600 config.sh 2>/dev/null
+[ -s config.sh ] || { echo "❌ Could not write config.sh (folder not writable / disk full?)"; exit 1; }
 echo ""
 echo "✅ config.sh created!"
 echo "   nano config.sh → edit remaining details (DB_PASS, PYTHON_BIN...)"

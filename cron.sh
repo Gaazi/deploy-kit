@@ -39,10 +39,22 @@ LINE="*/$MIN * * * * DEPLOY_TRIGGER=cron /bin/bash '$SCRIPT_DIR/auto_deploy.sh' 
 
 if command -v crontab >/dev/null 2>&1; then
   # install, removing any older deploy line for this branch first.
-  # Match BOTH line styles: new (quoted: auto_deploy.sh' 'main) and old
-  # (unquoted: auto_deploy.sh main) — otherwise old-kit lines pile up as
-  # duplicates and the branch double-fires.
-  ( crontab -l 2>/dev/null | grep -v "auto_deploy.sh' '$BRANCH" | grep -v "auto_deploy.sh $BRANCH " ; echo "$LINE" ) | crontab -
+  # Read first, verify, then write: a failing `crontab -l` must never look
+  # like "no crontab" (that would silently delete every other cron job).
+  CRON_CURRENT="$(crontab -l 2>/dev/null)"; CRON_RC=$?
+  if [ "$CRON_RC" -ne 0 ] && [ -n "$CRON_CURRENT" ]; then
+    echo "❌ Could not read the current crontab (exit $CRON_RC) — refusing to overwrite it"
+    exit 1
+  fi
+  # Dedup with FIXED strings anchored by the closing quote / the redirect:
+  # the old substring match also deleted a different branch (dev vs dev2).
+  CRON_NEW="$(printf '%s\n' "$CRON_CURRENT" | grep -v '^$' \
+    | grep -vF "auto_deploy.sh' '$BRANCH'" \
+    | grep -vF "auto_deploy.sh $BRANCH >>")"
+  if ! { [ -n "$CRON_NEW" ] && printf '%s\n' "$CRON_NEW"; printf '%s\n' "$LINE"; } | crontab -; then
+    echo "❌ crontab install failed — check cron.allow/cron.deny or spool permissions"
+    exit 1
+  fi
   echo "✅ Cron installed — every $MIN min → auto-deploy '$BRANCH' (0 GitHub Actions)"
   echo "   Line added: $LINE"
   echo "   View/remove: crontab -e  (delete the auto_deploy.sh line)"

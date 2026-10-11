@@ -43,8 +43,14 @@ if [ ! -d "$WORKSPACE/.git" ]; then
     git clone --single-branch --branch "$BRANCH" -- "$REPO_URL" "$WORKSPACE" >/dev/null 2>&1 \
     || { echo "❌ Could not clone $REPO_URL — check REPO_URL + run keygen.sh"; exit 1; }
 else
-  GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i \"$DEPLOY_KEY\" -o StrictHostKeyChecking=no}" \
-    git -C "$WORKSPACE" fetch origin "$BRANCH" >/dev/null 2>&1
+  # A failed fetch must abort: resetting to a stale origin/$BRANCH would
+  # detect the OLD stack and write those wrong values into config.sh.
+  if ! GIT_SSH_COMMAND="${DEPLOY_KEY:+ssh -i \"$DEPLOY_KEY\" -o StrictHostKeyChecking=no}" \
+      git -C "$WORKSPACE" fetch origin "$BRANCH" >/dev/null 2>&1 \
+     || ! git -C "$WORKSPACE" rev-parse --verify -q "origin/$BRANCH" >/dev/null 2>&1; then
+    echo "❌ git fetch failed for '$BRANCH' — cannot detect reliably (check REPO_URL / DEPLOY_KEY)"
+    exit 1
+  fi
   git -C "$WORKSPACE" checkout "$BRANCH" >/dev/null 2>&1
   git -C "$WORKSPACE" reset --hard "origin/$BRANCH" >/dev/null 2>&1
 fi
@@ -115,9 +121,14 @@ case "$ANS" in
   ""|y|Y|yes|YES|Yes)
     apply_key() {  # $1=KEY  $2=value (safe: no sed/echo expansion of & $ | etc.)
       local k="$1" v="$2"
+      # config.sh holds secrets (DB_PASS, tokens): the rewrite must not relax
+      # its permissions (a fresh file gets the umask, e.g. 644).
+      local perm
+      perm="$(stat -c %a "$CONFIG_FILE" 2>/dev/null || stat -f %Lp "$CONFIG_FILE" 2>/dev/null || echo '')"
       grep -v "^$k=" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" 2>/dev/null
       printf '%s="%s"\n' "$k" "$v" >> "$CONFIG_FILE.tmp"
       mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+      [ -n "$perm" ] && chmod "$perm" "$CONFIG_FILE" 2>/dev/null
     }
     apply_key APP_TYPE "$APP_TYPE"
     apply_key BUILD_CMD "$BUILD_CMD"

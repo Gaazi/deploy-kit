@@ -25,9 +25,9 @@ Never add deploy work to the workflow — it belongs in auto_deploy.sh (or rollb
 1. **Workspace** — clone if missing, else `git fetch origin <branch>`. **Safety guard: if `origin/<branch>` can't be resolved (clone/fetch failed, wrong branch) → abort BEFORE rsync — the app dir is never touched.**
 2. **SHA skip** — compare `.deployed_sha`; same SHA → exit 0 (no work, prints "No new commit" on stdout too)
 2.5 **Pre-deploy hook** — if `PRE_DEPLOY_HOOK` set → run in APP_DIR (or WORKSPACE if first deploy). **Failure → Telegram fail alert + abort** BEFORE rsync touches APP_DIR (safe, app untouched).
-3. **Rsync** — `-az --delete` with excludes: `.git/`, `.env`, `*.db`, `*.sqlite3`, `__pycache__/`, `*.pyc`, `node_modules/`, `venv/`, `.venv/`, `*.log`, `media/`, `backups/`, `tests/` + any extra `RSYNC_EXCLUDES` (space-separated). **`APP_SUBDIR` set → only that subfolder is deployed** (monorepos); missing subfolder → abort before touching app dir.
+3. **Rsync** — `-az --delete` with excludes: `.git/`, `.env`, `*.db`, `*.sqlite3`, `__pycache__/`, `*.pyc`, `node_modules/`, `venv/`, `.venv/`, `*.log`, `media/`, `backups/`, `tests/`, `deploy_kit/`, `deploy-kit/`, `config.sh`, `config.*.sh`, `.htaccess`, `.htaccess.` + any extra `RSYNC_EXCLUDES` (space-separated). `.htaccess` is excluded on purpose (a real deployment lesson: `--delete` wiped the server's web-server config → 404) — so a `.htaccess` that lives in the REPO is never deployed either; keep server rewrites on the server. **`APP_SUBDIR` set → only that subfolder is deployed** (monorepos); missing subfolder → abort before touching app dir.
 4. **Build** — if `BUILD_CMD` set → run in APP_DIR. **Failure → Telegram fail alert + abort** (app may be partially updated → hint rollback).
-5. **DB backup** — if `DB_BACKUP=yes` + DB_* set → mysqldump/pg_dump to `$WORKSPACE_BASE/backups/<branch>/` (outside the app dir — web-safe), keep `DB_BACKUP_KEEP` (default 7); sqlite = file copy, keep 7
+5. **DB backup** — if `DB_BACKUP=yes` + DB_* set → mysqldump/pg_dump (or `db-dump.py` when the CLI is missing) to `$WORKSPACE_BASE/backups/<branch>/` (outside the app dir — web-safe), keep `DB_BACKUP_KEEP` fresh (default 7); older dumps are gzip-compressed, never deleted (the `.gz` archive is capped at `DB_BACKUP_KEEP` and pruned only once 21+ archives exist); sqlite = file copy. A dump tool that FAILS is flagged (`DB backup INVALID (failed)`) even when it left a valid-looking header behind.
 6. **Migrate** — if `MIGRATE_CMD` set → run in APP_DIR. **Failure → Telegram fail alert + abort** (hint: restore DB dump then rollback).
 7. **Restart** — per `RESTART_METHOD` (passenger → touch tmp/restart.txt; systemctl → restart `$SERVICE_NAME` or `$SITE_DOMAIN`; pm2 → `pm2 restart $PM2_APP`; supervisor → `supervisorctl restart $SUPERVISOR_APP`; docker → compose down/up; php → reload fpm; none/"" → skip). All restart failures are non-fatal (`|| true`) — deploy never crashes because a service binary is missing.
 7.5 **Post-deploy hook** — if `POST_DEPLOY_HOOK` set → run in APP_DIR after restart and before health check (e.g. cache clear, CDN purge, maintenance off).
@@ -42,12 +42,13 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 ```
 /bin/bash rollback.sh <branch> [commit-sha]
 ```
-- No sha → uses last deployed SHA from `.deployed_sha`
+- No sha → rolls back to `.previous_sha` (the version live before the current deploy); if that is missing/equal to `.deployed_sha`, it re-syncs the current `.deployed_sha`
 - Uses `DEFAULT_BRANCH` too (same default logic as auto_deploy.sh)
 - Fetches, **safety guard: target SHA must resolve locally → else abort before rsync**, checks out target SHA
+- checkout / rsync / build failures **abort with a non-zero exit** (never prints "✅ Rolled back" for a no-op)
 - Rsyncs to APP_DIR with the **same excludes** as auto_deploy.sh (+ RSYNC_EXCLUDES)
 - **Rebuilds** if `BUILD_CMD` set (Node/static rollbacks stay working)
-- Restores latest pre-migration dump if DB_* set and dump exists
+- Restores the latest fresh (uncompressed) dump when DB_* is set and a dump exists; DB creds missing from config.sh are auto-read from the app `.env` `DATABASE_URL` (same fallback as auto_deploy.sh), the `mysql` CLI falling back to `db-dump.py restore`, and every failure is reported instead of being silent
 - Restarts per RESTART_METHOD (same methods as auto_deploy.sh)
 - Writes rollback line to the same LOG_FILE
 
@@ -57,8 +58,9 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 /bin/bash test.sh
 ```
 - bash -n on every script; missing-config error; missing-required-vars error
-- Full local integration test: real file:// git repo → deploy → idempotent skip → new commit → rollback
-- No network needed; everything in a temp dir. Run before committing changes.
+- Full local integration test: real file:// git repo → deploy → idempotent skip → new commit → rollback (explicit SHA **and** no-SHA "previous version")
+- Backup rotation + failed-dump verdict, notification gate (stub `mail`), KIT_SNAP early-exit, deploy-lock, hooks, branch config, cron/webhook/doctor checks
+- No host state is touched: `cron.sh` runs against a fake `crontab` (the real crontab is NEVER replaced). Everything lives in a temp dir; the only outbound calls are the notification mocks, which now time out.
 
 ## Quickstart (quickstart.sh) — 1 command, everything
 

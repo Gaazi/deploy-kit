@@ -29,7 +29,9 @@ fi
 echo ""
 echo "Get the token: GitHub → your repo → Settings → Actions → Runners →"
 echo "  'New self-hosted runner' → copy the --token value"
-read -rp "Registration token: " TOKEN
+echo "  (the token is single-use and expires after ~1 hour)"
+read -rsp "Registration token: " TOKEN
+echo ""
 if [ -z "$TOKEN" ]; then
   echo "❌ token is required"; exit 1
 fi
@@ -43,27 +45,32 @@ case "$ARCH" in
 esac
 echo "📦 Arch: $RUNNER_ARCH — downloading latest runner..."
 LATEST="$(curl -s https://api.github.com/repos/actions/runner/releases/latest \
-  | grep -oP '"tag_name":\s*"v\K[^"]+' | head -1)"
+  | sed -n 's/.*"tag_name":[[:space:]]*"v\([^"]*\)".*/\1/p' | head -1)"
 if [ -z "$LATEST" ]; then
   echo "❌ could not get the latest runner version (network?)"; exit 1
 fi
 RUNNER_DIR="$HOME/actions-runner"
 mkdir -p "$RUNNER_DIR"
 cd "$RUNNER_DIR"
-curl -sL -o runner.tar.gz \
-  "https://github.com/actions/runner/releases/download/v${LATEST}/actions-runner-linux-${RUNNER_ARCH}-${LATEST}.tar.gz"
-tar xzf runner.tar.gz
+# -f: fail on HTTP errors instead of saving an error page as the tarball
+curl -fsSL -o runner.tar.gz \
+  "https://github.com/actions/runner/releases/download/v${LATEST}/actions-runner-linux-${RUNNER_ARCH}-${LATEST}.tar.gz" \
+  || { echo "❌ runner download failed (v$LATEST)"; exit 1; }
+tar xzf runner.tar.gz || { echo "❌ could not unpack the runner archive"; exit 1; }
 rm -f runner.tar.gz
 
 # ── 3. register ──
 echo "🔗 Registering runner..."
 ./config.sh --url "https://github.com/$GH_USER/$GH_REPO" \
-  --token "$TOKEN" --unattended --replace >/dev/null
+  --token "$TOKEN" --unattended --replace >/dev/null \
+  || { echo "❌ runner registration failed — token expired/used, or wrong repo?"; exit 1; }
 
 # ── 4. install as a service ──
 echo "🚀 Installing as a service..."
-(sudo ./svc.sh install >/dev/null 2>&1 || ./svc.sh install >/dev/null 2>&1)
-(sudo ./svc.sh start >/dev/null 2>&1 || ./svc.sh start >/dev/null 2>&1)
+(sudo ./svc.sh install >/dev/null 2>&1 || ./svc.sh install >/dev/null 2>&1) \
+  || { echo "❌ service install failed — run: sudo $RUNNER_DIR/svc.sh install"; exit 1; }
+(sudo ./svc.sh start >/dev/null 2>&1 || ./svc.sh start >/dev/null 2>&1) \
+  || { echo "❌ service start failed — check: sudo $RUNNER_DIR/svc.sh status"; exit 1; }
 
 echo ""
 echo "✅ Self-hosted runner installed + running ($RUNNER_DIR)"

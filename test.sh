@@ -119,6 +119,17 @@ else
   echo "     --- app ls ---"; ls -la "$APP"
 fi
 
+# No-SHA rollback must undo the LAST deploy (README: "go back to the previous
+# commit"). Targeting .deployed_sha alone would re-deploy the CURRENT commit —
+# a silent no-op that leaves a broken site broken.
+(cd "$TMP/kit" && bash auto_deploy.sh main >/dev/null 2>&1)
+(cd "$TMP/kit" && bash rollback.sh main >/dev/null 2>&1)
+if grep -q "^v1$" "$APP/index.html"; then
+  ok "rollback.sh with no SHA → previous version (not a no-op)"
+else
+  bad "rollback.sh with no SHA → previous version — app has: $(head -c 40 "$APP/index.html")"
+fi
+
 echo "== 5. keygen.sh (SSH key + GitHub copy-paste helper) =="
 mkdir -p "$TMP/k2"
 cp keygen.sh "$TMP/k2/"
@@ -213,10 +224,13 @@ else
 fi
 [ ! -d "$LOCKD" ] && ok "lock: released after deploy" || bad "lock: released after deploy"
 
-# empty PID file (crashed between mkdir and pid write) → also stale, must be cleaned
+# empty PID file (crashed between mkdir and pid write) → also stale, must be cleaned.
+# .deployed_sha is removed first: otherwise the deploy is SHA-skipped and this
+# assertion passed even when the empty-PID branch was broken (false green).
 mkdir -p "$LOCKD" && : > "$LOCKD/pid"
-(cd "$TMP/kit" && bash auto_deploy.sh main >/dev/null 2>&1)
-if [ -f "$TMP/ws2/main/.deployed_sha" ]; then
+rm -f "$TMP/ws2/main/.deployed_sha"
+OUT="$(cd "$TMP/kit" && bash auto_deploy.sh main 2>&1)"
+if [ -f "$TMP/ws2/main/.deployed_sha" ] && ! echo "$OUT" | grep -qi "another deploy"; then
   ok "lock: empty-PID lock (crash leftover) cleaned + deploy ran"
 else
   bad "lock: empty-PID lock (crash leftover) cleaned + deploy ran"
@@ -247,13 +261,24 @@ else
 fi
 
 echo "== 10. cron.sh (zero GitHub Actions mode) =="
-cp cron.sh "$TMP/"
-if command -v crontab >/dev/null 2>&1; then
-  mkdir -p "$TMP/home3"
-  OUT="$(cd "$TMP" && HOME="$TMP/home3" bash cron.sh 2 2>&1)"
-else
-  OUT="$(cd "$TMP" && HOME="$TMP/home3" bash cron.sh 2 2>&1)"
+# NEVER touch the host crontab: this section used to run the real cron.sh, which
+# REPLACED the invoking user's crontab with a line pointing at $TMP (deleted on
+# exit) — running test.sh on a server wiped the user's real cron deploy line.
+# A fake crontab that stores its state in a file keeps the host untouched.
+mkdir -p "$TMP/cronbin10" "$TMP/home3"
+cat > "$TMP/cronbin10/crontab" <<'CFAKE10'
+#!/bin/bash
+if [ "$1" = "-l" ]; then
+  [ -f "$CRONSTORE10" ] && cat "$CRONSTORE10" || true
+  exit 0
 fi
+NEW="$(cat)"
+printf '%s\n' "$NEW" > "$CRONSTORE10"
+CFAKE10
+chmod +x "$TMP/cronbin10/crontab"
+export CRONSTORE10="$TMP/cronstore10"
+cp cron.sh "$TMP/"
+OUT="$(cd "$TMP" && PATH="$TMP/cronbin10:$PATH" HOME="$TMP/home3" bash cron.sh 2 2>&1)"
 if echo "$OUT" | grep -q "auto_deploy.sh"; then
   ok "cron.sh: cron line generated"
 else
@@ -488,6 +513,19 @@ BEFORE="$(ls /tmp/kit-deploy.* 2>/dev/null | wc -l)"
 AFTER="$(ls /tmp/kit-deploy.* 2>/dev/null | wc -l)"
 [ "$AFTER" -le "$BEFORE" ] && ok "KIT_SNAP: no /tmp/kit-deploy.* leak after deploy" || bad "KIT_SNAP: no /tmp/kit-deploy.* leak after deploy"
 
+# Early-exit path: a cron-mode skip returns BEFORE the deploy lock is taken, so
+# the snapshot trap must already be armed (it used to be installed only later —
+# every skipped cron deploy leaked a /tmp/kit-deploy.* file).
+cat >> "$TMP/snap-kit/config.sh" <<CFG
+SKIP_WHEN_FLAG="1"
+TOGGLE_FLAG="$TMP/snap-flag"
+CFG
+: > "$TMP/snap-flag"
+BEFORE2="$(ls /tmp/kit-deploy.* 2>/dev/null | wc -l)"
+( cd "$TMP/snap-kit" && DEPLOY_TRIGGER=cron bash auto_deploy.sh main >/dev/null 2>&1 )
+AFTER2="$(ls /tmp/kit-deploy.* 2>/dev/null | wc -l)"
+[ "$AFTER2" -le "$BEFORE2" ] && ok "KIT_SNAP: no /tmp leak on early (cron-skip) exit" || bad "KIT_SNAP: /tmp leaked on early exit"
+
 echo "== 20. ZERO project references (public-ready guard) =="
 # Machine-enforced: ANY push to main runs this and FAILS if a real project
 # name appears in files or git history. Works for every agent, no memory needed.
@@ -625,15 +663,104 @@ git -C "$TMP/hook_src" push -q origin staging
 [ -f "$TMP/staging_target_app/staging.txt" ] \
   && ok "branch config: config.<branch>.sh loaded and used" || bad "branch config: config.<branch>.sh loaded"
 
-# (d) NOTIFY_ON_SUCCESS="no" quiet mode
-NOTIFY_CALLED=0
-test_notify() { NOTIFY_CALLED=1; }
+# (d) NOTIFY_ON_SUCCESS="no" must really suppress success alerts. This runs the
+# REAL auto_deploy.sh with a stub `mail` that records every notification attempt
+# (the old check only re-tested a variable the test itself had just set, so it
+# could never fail and never touched the product code).
+mkdir -p "$TMP/mailbin"
+cat > "$TMP/mailbin/mail" <<'MAILSTUB'
+#!/bin/bash
+echo "notify" >> "$MAIL_MARKER"
+cat > /dev/null
+MAILSTUB
+chmod +x "$TMP/mailbin/mail"
+export MAIL_MARKER="$TMP/mail-attempts"
+rm -f "$MAIL_MARKER"
+git -C "$TMP/hook_src" checkout -q main
+echo "v2" > "$TMP/hook_src/file.txt"
+git -C "$TMP/hook_src" add -A
+git -C "$TMP/hook_src" -c user.email=test@test -c user.name=test commit -qm "v2"
+git -C "$TMP/hook_src" push -q origin main
+cat > "$TMP/hook_kit/config.sh" <<CFG
+REPO_URL="file://$TMP/hook_bare"
+APP_DIR="$TMP/hook_app"
+WORKSPACE_BASE="$TMP/hook_ws"
+LOG_FILE="$TMP/hook_deploy.log"
 NOTIFY_ON_SUCCESS="no"
-if [ "${NOTIFY_ON_SUCCESS:-yes}" != "no" ]; then test_notify; fi
-[ "$NOTIFY_CALLED" -eq 0 ] \
+ALERT_EMAIL="ops@example.test"
+CFG
+( cd "$TMP/hook_kit" && PATH="$TMP/mailbin:$PATH" bash auto_deploy.sh main >/dev/null 2>&1 ) || true
+[ ! -f "$MAIL_MARKER" ] \
   && ok "quiet mode: NOTIFY_ON_SUCCESS=no suppresses success alerts" || bad "quiet mode: NOTIFY_ON_SUCCESS=no"
 
-echo "== 24. Doc/CI count consistency (never drifts silently) =="
+# (e) control for (d): with notifications ON the same deploy DOES notify
+# (proves the quiet-mode check above can actually fail)
+echo "v3" > "$TMP/hook_src/file.txt"
+git -C "$TMP/hook_src" add -A
+git -C "$TMP/hook_src" -c user.email=test@test -c user.name=test commit -qm "v3"
+git -C "$TMP/hook_src" push -q origin main
+sed -i 's/^NOTIFY_ON_SUCCESS="no"/NOTIFY_ON_SUCCESS="yes"/' "$TMP/hook_kit/config.sh"
+( cd "$TMP/hook_kit" && PATH="$TMP/mailbin:$PATH" bash auto_deploy.sh main >/dev/null 2>&1 ) || true
+[ -f "$MAIL_MARKER" ] \
+  && ok "notify gate: alerts DO fire when enabled (control)" || bad "notify gate: control failed (no alert while enabled)"
+
+echo "== 24. DB backup: archive rotation + failed dump =="
+# Regression: archive_old_backups() was defined BELOW its three call sites, so
+# bash reported "command not found" and rotation never ran — backups grew
+# forever while the log claimed "last N fresh + older archived".
+BKWS="$TMP/bk_ws"; BKAPP="$TMP/bk_app"; BKKIT="$TMP/bk_kit"; BKBIN="$TMP/bk_bin"
+mkdir -p "$BKAPP" "$BKKIT" "$BKBIN"
+cat > "$BKBIN/mysqldump" <<'DMPSTUB'
+#!/bin/bash
+echo "-- MySQL dump 10.13  Distrib 8.0 (test stub)"
+echo "CREATE TABLE t (id int);"
+DMPSTUB
+chmod +x "$BKBIN/mysqldump"
+cp auto_deploy.sh "$BKKIT/"
+cat > "$BKKIT/config.sh" <<CFG
+REPO_URL="file://$TMP/hook_bare"
+APP_DIR="$BKAPP"
+WORKSPACE_BASE="$BKWS"
+LOG_FILE="$TMP/bk.log"
+DB_BACKUP="yes"
+DB_BACKUP_KEEP="2"
+DB_TYPE="mysql"
+DB_HOST="localhost"
+DB_USER="u"
+DB_PASS="p"
+DB_NAME="db"
+CFG
+for i in 1 2 3 4; do
+  echo "bk$i" > "$TMP/hook_src/bk$i.txt"
+  git -C "$TMP/hook_src" add -A
+  git -C "$TMP/hook_src" -c user.email=test@test -c user.name=test commit -qm "bk$i"
+  git -C "$TMP/hook_src" push -q origin main
+  ( cd "$BKKIT" && PATH="$BKBIN:$PATH" bash auto_deploy.sh main >/dev/null 2>&1 ) || true
+done
+BKDIR="$BKWS/backups/main"
+GZ_N="$(ls -1 "$BKDIR"/*.sql.gz 2>/dev/null | wc -l | tr -d ' ')"
+FRESH_N="$(ls -1 "$BKDIR"/*.sql 2>/dev/null | wc -l | tr -d ' ')"
+[ "${GZ_N:-0}" -ge 1 ] && ok "backup rotation: old dumps gzipped (never deleted)" || bad "backup rotation: no .gz archive created (rotation dead?)"
+[ "${FRESH_N:-0}" -le 2 ] && ok "backup rotation: only DB_BACKUP_KEEP fresh dumps kept" || bad "backup rotation: $FRESH_N fresh dumps (KEEP=2)"
+
+# A dump tool that fails AFTER printing a valid-looking header must never count
+# as a valid backup: RESTORE_ON_FAIL would restore that truncated file and wipe
+# the live database with partial data.
+cat > "$BKBIN/mysqldump" <<'DMPFAIL'
+#!/bin/bash
+echo "-- MySQL dump 10.13  Distrib 8.0 (truncated after this line)"
+exit 1
+DMPFAIL
+chmod +x "$BKBIN/mysqldump"
+echo "bkfail" > "$TMP/hook_src/bkfail.txt"
+git -C "$TMP/hook_src" add -A
+git -C "$TMP/hook_src" -c user.email=test@test -c user.name=test commit -qm "bkfail"
+git -C "$TMP/hook_src" push -q origin main
+( cd "$BKKIT" && PATH="$BKBIN:$PATH" bash auto_deploy.sh main >/dev/null 2>&1 ) || true
+grep -q "DB backup INVALID (failed)" "$TMP/bk.log" 2>/dev/null \
+  && ok "failed dump is reported as INVALID (never restored)" || bad "failed dump not flagged (partial dump treated as valid)"
+
+echo "== 25. Doc/CI count consistency (never drifts silently) =="
 # The counts in test.yml, AGENTS.md and README.md must match reality.
 # META counters (not PASS) keep these self-checks out of the core count —
 # test.yml declares the CORE number and stays stable.

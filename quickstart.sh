@@ -43,7 +43,14 @@ echo ""
 echo ""
 echo "【4/4】 Kit self-test"
 echo ""
-/bin/bash test.sh
+if ! /bin/bash test.sh; then
+  echo ""
+  echo "═══════════════════════════════════════════════════"
+  echo "  ❌ QUICKSTART FAILED — the kit's own self-test reported errors above."
+  echo "     Fix them first (install rsync, check config.sh), then re-run."
+  echo "═══════════════════════════════════════════════════"
+  exit 1
+fi
 
 echo ""
 echo "═══════════════════════════════════════════════════"
@@ -52,11 +59,12 @@ echo "════════════════════════�
 echo ""
 echo "  Only 2 steps left (2 min):"
 echo ""
-echo "  1. Copy the workflow into your GitHub repo:"
-echo "     cp ~/deploy-kit/.github/workflows/deploy.yml.example"
-echo "        .github/workflows/deploy.yml"
+echo "  1. Add the workflow to YOUR PROJECT repo (not the kit folder):"
+echo "     cd /path/to/YOUR/project/repo"
+echo "     mkdir -p .github/workflows"
+echo "     cp ~/deploy-kit/.github/workflows/deploy.yml.example .github/workflows/deploy.yml"
 echo ""
-echo "  2. Push → deploy happens automatically 🎉"
+echo "  2. Commit + push → deploy happens automatically 🎉"
 echo ""
 echo "  Need more detail? Read README.md (optional)"
 echo "═══════════════════════════════════════════════════"

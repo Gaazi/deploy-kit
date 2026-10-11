@@ -13,6 +13,9 @@ if [ -n "$1" ]; then
     CONFIG_FILE="$1"
   elif [ -f "${SCRIPT_DIR}/config.${1}.sh" ]; then
     CONFIG_FILE="${SCRIPT_DIR}/config.${1}.sh"
+  elif [ -f "${SCRIPT_DIR}/$1" ]; then
+    # bare filename (e.g. "config.sh") → resolve against the kit dir, not $PWD
+    CONFIG_FILE="${SCRIPT_DIR}/$1"
   else
     CONFIG_FILE="$1"
   fi
@@ -254,15 +257,15 @@ if [ "${KIT_SELF_UPDATE:-no}" = "yes" ]; then
 else
   info "KIT_SELF_UPDATE not set (kit does not auto-update — optional)"
 fi
-if [ -n "${SERVER_DEPLOY_PATH:-}" ]; then
-  info "SERVER_DEPLOY_PATH set (workflow will call: $SERVER_DEPLOY_PATH)"
-else
-  info "SERVER_DEPLOY_PATH not set (workflow uses default ~/deploy-kit/auto_deploy.sh — set this if your kit lives elsewhere)"
-fi
+# SERVER_DEPLOY_PATH is a GitHub repository SECRET (read by the workflow), not
+# a config.sh key — doctor cannot verify it, so it only reminds the user.
+info "SERVER_DEPLOY_PATH is a GitHub repo secret (Settings → Secrets), NOT a config.sh key — the workflow calls that path (default ~/deploy-kit/auto_deploy.sh)"
 
 # Web-accessible config.sh warning (kit inside project root = secrets exposed)
 # Trailing "/*" in the pattern — "/home/user/app2" must NOT match "/home/user/app"
-if [ -n "$APP_DIR" ] && case "$SCRIPT_DIR" in "$APP_DIR"/*) true;; *) false;; esac; then
+# APP_DIR with a trailing slash would break the pattern, so strip it first.
+APP_DIR_CHECK="${APP_DIR%/}"
+if [ -n "$APP_DIR_CHECK" ] && case "$SCRIPT_DIR" in "$APP_DIR_CHECK"/*) true;; *) false;; esac; then
   if [ -f "$SCRIPT_DIR/.htaccess" ]; then
     ok "Kit is inside the app dir but .htaccess blocks web access — $(basename "$CONFIG_FILE") is protected"
   else

@@ -135,10 +135,14 @@ mkdir -p ~/deploy-kit
 
 # Option C — download directly on the server:
 cd ~/deploy-kit
-for f in auto_deploy.sh rollback.sh setup.sh setup-quick.sh keygen.sh detect.sh cron.sh test.sh db-dump.py config.example.sh; do
+for f in quickstart.sh auto_deploy.sh rollback.sh doctor.sh setup.sh setup-quick.sh \
+         keygen.sh detect.sh cron.sh runner.sh webhook.sh test.sh db-dump.py \
+         config.example.sh .gitignore .htaccess; do
   curl -fsSL -o "$f" "https://raw.githubusercontent.com/YOUR_USER/deploy-kit/main/$f"
 done
 chmod +x *.sh
+# (easiest: `git clone https://github.com/YOUR_USER/deploy-kit.git ~/deploy-kit`
+#  instead — it also brings .agents/ and .github/workflows/*.example)
 ```
 
 ### Step 2: Create the config (most important)
@@ -195,7 +199,7 @@ nano config.sh
 | `NOTIFY_ON_SUCCESS` | Send notifications on success (`no` = failure/rollback alerts only) | yes/no | `yes` |
 | `DEPLOY_WEBHOOK_SECRET` | Webhook trigger (VPS only) — random string, match in GitHub secrets | `""` = disabled | `abc...` |
 | `WEBHOOK_PORT` | Webhook listener port | Number | `9000` |
-| `HEALTH_URL` | Health check URL (optional) | Full URL | `https://myapp.com/health` |
+| `HEALTH_URL` | Health check URL (optional — `""` = skip the check) | Full URL | `https://myapp.com/health` |
 | `HEALTH_WAIT` | Seconds to wait after restart before checking | Number | `8` |
 | `HEALTH_RETRY` | How many times to retry health check | Number | `3` |
 | `AUTO_ROLLBACK_ON_FAIL` | Auto-rollback if health check fails | yes/no | `yes` |
@@ -484,9 +488,13 @@ So Actions mode handles roughly **2,000 deploys/month** — enough for most proj
 
 ```bash
 # On the server:
-/bin/bash ~/deploy-kit/rollback.sh main              # back to the last SHA
+/bin/bash ~/deploy-kit/rollback.sh main              # back to the previous version
 /bin/bash ~/deploy-kit/rollback.sh main <COMMIT_SHA>  # to a specific SHA
 ```
+
+No SHA given → it rolls back to `.previous_sha` (the version that was live
+before the current deploy). If no distinct previous version is recorded, it
+re-syncs the currently deployed SHA.
 
 It automatically: pins → restores the DB dump (if present) → syncs files → restarts.
 
@@ -551,7 +559,7 @@ curl -s -o /dev/null -w "%{http_code}" https://yoursite.com/
 ### 3. The deployed commit
 
 ```bash
-cat ~/deploy-kit/deploy-workspace/.deployed_sha
+cat ~/deploy-workspace/main/.deployed_sha     # default WORKSPACE_BASE, branch = main
 ```
 
 Compare it with the latest commit on GitHub — if they match, the deploy went through.

@@ -21,7 +21,7 @@
 | `SITE_DOMAIN` | Live domain (no https://) | `myapp.com` |
 | `APP_TYPE` | python \| node \| php \| wordpress \| ruby \| java \| go \| static \| docker | `python` |
 | `PYTHON_BIN` | Python binary (virtualenv) | `/home/cpuser/virtualenv/myapp/3.11/bin/python` |
-| `NODE_BIN` | Node binary (node type) | `""` |
+| `NODE_BIN` | Custom Node binary — its directory is PREPENDED to PATH before build/migrate/hooks (node type) | `""` |
 | `BUILD_CMD` | Build command (Node/static) — `""` = skip | `npm run build` |
 | `MIGRATE_CMD` | Migration command — `""` = skip | `$PYTHON_BIN -m alembic upgrade head` |
 | `PRE_DEPLOY_HOOK` | Command to run BEFORE rsync touches app (e.g. `php artisan down`) — aborts if non-zero | `php artisan down` |
@@ -30,7 +30,7 @@
 | `SERVICE_NAME` | systemctl: service name — `""` = `SITE_DOMAIN` | `myapp.service` |
 | `PM2_APP` | pm2: app name — `all` restarts everything (missing pm2 = no crash) | `all` |
 | `SUPERVISOR_APP` | supervisor: app name — `all` (missing supervisorctl = no crash) | `all` |
-| `WSGI_FILE` | WSGI entry (passenger, Python) | `passenger_wsgi.py` |
+| `WSGI_FILE` | WSGI entry name — informational (cPanel Passenger reads it, the kit does not) | `passenger_wsgi.py` |
 | `DOCKER_COMPOSE` | docker-compose path (docker type; `""` = default) | `docker-compose.yml` |
 | `PHP_FPM_SERVICE` | php-fpm service name (php type; `""` = skip) | `php8.2-fpm` |
 | `APP_SUBDIR` | Monorepo: deploy only this subfolder — `""` = whole repo. Missing subfolder → deploy aborts safely | `web/` |
@@ -70,7 +70,7 @@ Webhook listener: `webhook.sh start|stop|status`. Needs socat (VPS only).
 ## Health check & Safety (optional)
 | Key | What |
 |-----|------|
-| `HEALTH_URL` | Full URL to check after deploy — `""` = skip. Default fallback `https://$SITE_DOMAIN/`. Uses `curl -m 15` (never hangs). |
+| `HEALTH_URL` | Full URL to check after deploy — `""` = skip (a MISSING key still falls back to `https://$SITE_DOMAIN/`). Uses `curl -m 15` (never hangs). |
 | `HEALTH_WAIT` | Seconds to sleep after restart before checking — `""` = 8. |
 | `HEALTH_RETRY` | How many times to retry health check (app may need a moment) — `""` = 3. |
 | `AUTO_ROLLBACK_ON_FAIL` | `yes` \| `no` — automatically rollback to previous working commit if health check fails |

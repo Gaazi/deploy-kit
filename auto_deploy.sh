@@ -14,6 +14,13 @@
 
 # ── Config load ─────────────────────────────────────────────
 SCRIPT_DIR="${KIT_REAL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+# When KIT_SELF_UPDATE=yes, this process may BE the /tmp snapshot copy of the
+# script (the parent exec'd us with KIT_SNAP set). Trap it first thing so that
+# EVERY exit path — including the early skips (cron toggle, low disk) that
+# happen long before the deploy lock — removes the temp file.
+if [ -n "${KIT_SNAP:-}" ]; then
+  trap 'rm -f "$KIT_SNAP" 2>/dev/null' EXIT
+fi
 BRANCH_ARG="${1:-}"
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
 # Branch-specific config: if config.<branch>.sh exists, use it (e.g. config.dev.sh, config.main.sh)
@@ -33,7 +40,7 @@ source "$CONFIG_FILE"
 if [ "${KIT_SELF_UPDATE:-no}" = "yes" ] && [ -z "${KIT_SNAP_EXEC:-}" ] && [ -d "$SCRIPT_DIR/.git" ]; then
   _snap="$(mktemp /tmp/kit-deploy.XXXXXX.sh 2>/dev/null)" || _snap=""
   if [ -n "$_snap" ] && cp "$SCRIPT_DIR/auto_deploy.sh" "$_snap" 2>/dev/null; then
-    trap '[ -n "${KIT_SNAP:-}" ] && rm -f "$KIT_SNAP" 2>/dev/null' EXIT
+    trap 'rm -f "${KIT_SNAP:-}" "${_snap:-}" 2>/dev/null' EXIT
     KIT_SNAP_EXEC=1 KIT_REAL_DIR="$SCRIPT_DIR" KIT_SNAP="$_snap" \
       exec /bin/bash "$_snap" "$@"
   fi
@@ -51,6 +58,15 @@ WORKSPACE_BASE="${WORKSPACE_BASE:-$USER_HOME/deploy-workspace}"
 WORKSPACE="$WORKSPACE_BASE/$BRANCH"
 LOG="${LOG_FILE:-$USER_HOME/deploy.log}"
 NOW="$(date '+%F %T')"
+
+# ── NODE_BIN (documented key) ───────────────────────────────
+# Makes a custom node/npm visible to build, migrate and hooks. Before this,
+# NODE_BIN was documented + written by setup but never used by any deploy
+# step, so `npm run build` failed with "command not found" on cPanel.
+if [ -n "${NODE_BIN:-}" ]; then
+  PATH="$(dirname "$NODE_BIN"):$PATH"
+  export PATH
+fi
 
 # ── .env fallback: auto-read app secrets the project already keeps ──
 # If config.sh leaves notification keys empty, borrow them from the app's
@@ -127,7 +143,10 @@ notify() {
 
   # 1. Telegram (HTML supported)
   if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
-    curl -s -o /dev/null "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+    # timeouts: a host that cannot reach the API must not hang the deploy
+    # (the deploy lock would stay held and later deploys would be skipped)
+    curl -s -o /dev/null --connect-timeout 5 -m 15 \
+      "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
       --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
       --data-urlencode "text=$html_msg" \
       --data-urlencode "parse_mode=HTML" >/dev/null 2>&1 || true
@@ -138,7 +157,7 @@ notify() {
     local discord_json
     discord_json="$(printf '%s' "$plain_msg" | sed 's/\\/\\\\/g; s/"/\\"/g' | awk '{printf "%s\\n", $0}')"
     discord_json="${discord_json%\\n}"
-    curl -s -o /dev/null -H "Content-Type: application/json" \
+    curl -s -o /dev/null --connect-timeout 5 -m 15 -H "Content-Type: application/json" \
       -d "{\"content\": \"$discord_json\"}" \
       "$DISCORD_WEBHOOK_URL" >/dev/null 2>&1 || true
   fi
@@ -148,7 +167,7 @@ notify() {
     local slack_json
     slack_json="$(printf '%s' "$plain_msg" | sed 's/\\/\\\\/g; s/"/\\"/g' | awk '{printf "%s\\n", $0}')"
     slack_json="${slack_json%\\n}"
-    curl -s -o /dev/null -H "Content-Type: application/json" \
+    curl -s -o /dev/null --connect-timeout 5 -m 15 -H "Content-Type: application/json" \
       -d "{\"text\": \"$slack_json\"}" \
       "$SLACK_WEBHOOK_URL" >/dev/null 2>&1 || true
   fi
@@ -188,6 +207,14 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     rm -rf "$LOCK_DIR.stale.$$" 2>/dev/null &
     mkdir "$LOCK_DIR" 2>/dev/null || { echo "⏳ Another deploy is running — skipped"; exit 0; }
   else
+    if [ ! -w "$WORKSPACE_BASE" ]; then
+      # not a race: the workspace base itself is unusable (bad WORKSPACE_BASE
+      # in config.sh, or missing permissions) — reporting "another deploy is
+      # running" here hid every deploy behind a silent skip + exit 0.
+      echo "❌ Workspace base is not writable: $WORKSPACE_BASE" | tee -a "$LOG"
+      echo "   Fix WORKSPACE_BASE in $(basename "$CONFIG_FILE") (or its permissions), then push again." | tee -a "$LOG"
+      exit 1
+    fi
     echo "⏳ Another deploy is running — this one skipped (the running deploy picks up the latest commit)"
     exit 0
   fi
@@ -328,6 +355,26 @@ if [ "$DB_BACKUP" = "yes" ] && { [ -z "$DB_USER" ] || [ -z "$DB_PASS" ]; }; then
   fi
 fi
 
+# ── Backup archive rotation (USER RULE: NEVER delete — compress instead) ──
+# MUST be defined ABOVE its first call: bash defines a function only when it
+# reaches the definition line, so calling it earlier fails with
+# "command not found" and the rotation silently never runs.
+# Last KEEP dumps stay full-speed (fast restore). Older ones are gzip-
+# compressed in place (~90% smaller). The compressed archive is capped at
+# KEEP, but nothing is removed until 21+ archives exist (by then they are
+# double-redundant with the app's own cPanel backups).
+archive_old_backups() {
+  for _ext in sql db; do
+    for _old in $(ls -1t "$BK_DIR"/*."$_ext" 2>/dev/null | tail -n +$((KEEP+1))); do
+      [ -f "$_old" ] && gzip -f "$_old" 2>/dev/null
+    done
+    _gz_n="$(ls -1 "$BK_DIR"/*."$_ext".gz 2>/dev/null | wc -l | tr -d ' ')"
+    if [ "${_gz_n:-0}" -gt 21 ]; then
+      ls -1t "$BK_DIR"/*."$_ext".gz 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f 2>/dev/null
+    fi
+  done
+}
+
 if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ]; then
   BK_DIR="$WORKSPACE_BASE/backups/$BRANCH"   # OUTSIDE app dir — not web-accessible, keeps app dir light
   mkdir -p "$BK_DIR"
@@ -335,11 +382,16 @@ if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ]; then
   KEEP="${DB_BACKUP_KEEP:-7}"   # how many old dumps to keep (lighter disk = smaller number)
   case "$KEEP" in ''|*[!0-9]*) KEEP=7;; esac   # safety: non-numeric → default 7
   [ "$KEEP" -lt 1 ] && KEEP=1                  # safety: 0 would delete ALL backups
+  # A dump tool can fail AFTER writing a valid-looking header (partial dump).
+  # That file still passes the signature check below, so failures are tracked
+  # here and force verdict "failed" — RESTORE_ON_FAIL must never restore half
+  # a dump (it would wipe the live DB with truncated data).
+  BK_FAILED=0
   if [ "$DB_TYPE" = "mysql" ]; then
     if command -v mysqldump >/dev/null 2>&1; then
       BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.sql"
       MYSQL_PWD="$DB_PASS" mysqldump -h "$DB_HOST" -u "$DB_USER" --single-transaction "$DB_NAME" \
-        > "$BK_FILE" 2>>"$LOG"
+        > "$BK_FILE" 2>>"$LOG" || { log "mysqldump FAILED (see log)"; BK_FAILED=1; }
     else
       # ── Python fallback (shared hosting: no mysqldump) ──
       # Uses the app's own venv python + pymysql + DATABASE_URL from .env.
@@ -347,7 +399,7 @@ if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ]; then
       _PYX="${PYTHON_BIN:-python3}"
       if [ -f "$APP_DIR/.env" ] && [ -f "$SCRIPT_DIR/db-dump.py" ] && command -v "$_PYX" >/dev/null 2>&1; then
         "$_PYX" "$SCRIPT_DIR/db-dump.py" dump "$APP_DIR/.env" "$BK_FILE" >> "$LOG" 2>&1 \
-          || log "python backup FAILED (see log)"
+          || { log "python backup FAILED (see log)"; BK_FAILED=1; }
       else
         log "DB backup skipped — no mysqldump, no python fallback (.env/db-dump.py missing)"
       fi
@@ -357,36 +409,24 @@ if [ "$DB_BACKUP" = "yes" ] && [ -n "$DB_NAME" ]; then
   elif [ "$DB_TYPE" = "postgres" ] && [ -n "$DB_USER" ] && command -v pg_dump >/dev/null 2>&1; then
     BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.sql"
     PGPASSWORD="$DB_PASS" pg_dump -h "$DB_HOST" -U "$DB_USER" "$DB_NAME" \
-      > "$BK_FILE" 2>>"$LOG"
+      > "$BK_FILE" 2>>"$LOG" || { log "pg_dump FAILED (see log)"; BK_FAILED=1; }
     archive_old_backups
     log "DB backup: $BK_FILE (last $KEEP fresh + older archived)"
   elif [ "$DB_TYPE" = "sqlite" ] && [ -f "$APP_DIR/$DB_NAME" ]; then
     BK_FILE="$BK_DIR/${SITE_DOMAIN}_${TS}.db"
-    cp "$APP_DIR/$DB_NAME" "$BK_FILE" 2>>"$LOG"
+    cp "$APP_DIR/$DB_NAME" "$BK_FILE" 2>>"$LOG" || { log "sqlite backup FAILED (see log)"; BK_FAILED=1; }
     archive_old_backups
     log "DB backup (sqlite): $BK_FILE (last $KEEP fresh + older archived)"
   fi
-
-  # ── Backup archive rotation (USER RULE: NEVER delete — compress instead) ──
-  # Last KEEP dumps stay full-speed (fast restore). Older ones are gzip-
-  # compressed in place (~90% smaller). Compressed archive is capped at KEEP;
-  # beyond that the OLDEST compressed is removed (by then it is extremely old
-  # and double-redundant with the app's own cPanel backups).
-  archive_old_backups() {
-    for _ext in sql db; do
-      for _old in $(ls -1t "$BK_DIR"/*."$_ext" 2>/dev/null | tail -n +$((KEEP+1))); do
-        [ -f "$_old" ] && gzip -f "$_old" 2>/dev/null
-      done
-      ls -1t "$BK_DIR"/*."$_ext".gz 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f 2>/dev/null
-    done
-  }
 
   # ── Backup verification (protect rollback from restoring garbage) ──
   # An empty/corrupt dump means a failed migration CANNOT be rolled back.
   # Abort BEFORE migrate when a migration is configured (the risky step);
   # otherwise warn only (backup was precautionary).
   BK_VERDICT="ok"
-  if [ -z "${BK_FILE:-}" ] || [ ! -s "$BK_FILE" ]; then
+  if [ "${BK_FAILED:-0}" = "1" ]; then
+    BK_VERDICT="failed"
+  elif [ -z "${BK_FILE:-}" ] || [ ! -s "$BK_FILE" ]; then
     BK_VERDICT="empty"
   elif [ "$DB_TYPE" = "mysql" ] && ! grep -q "MySQL dump" "$BK_FILE" 2>/dev/null; then
     BK_VERDICT="invalid"
@@ -418,9 +458,9 @@ if [ -n "$MIGRATE_CMD" ]; then
     MIGRATE_RESULT="FAIL"
     # ── RESTORE_ON_FAIL: auto-restore DB from THIS deploy's verified backup ──
     # USER RULE: restore ONLY from this deploy's own backup — never stale/old backups.
-    # Migration adhoori fail ho to DB half-migrated reh jata hai (MySQL DDL
-    # rollback nahi hota) — isliye verified backup se restore karo.
-    if [ "${RESTORE_ON_FAIL:-no}" = "yes" ] && [ -s "${BK_FILE:-}" ]; then
+    # A half-finished migration leaves the DB migrated while the code is not
+    # (MySQL DDL does not roll back) — so restore this deploy's own backup.
+    if [ "${RESTORE_ON_FAIL:-no}" = "yes" ] && [ "${BK_VERDICT:-}" = "ok" ] && [ -s "${BK_FILE:-}" ]; then
       _PYX="${PYTHON_BIN:-python3}"
       log "RESTORE_ON_FAIL — restoring DB from $BK_FILE"
       if [ "$DB_TYPE" = "mysql" ] && command -v mysql >/dev/null 2>&1; then
@@ -474,7 +514,9 @@ echo "$NEW_SHA" > "$WORKSPACE/.deployed_sha"
 DEPLOY_DURATION=$(( $(date +%s) - DEPLOY_START_TIME ))
 
 # ── 8. Health check (optional — empty SITE_DOMAIN/HEALTH_URL = skip) ─
-HEALTH_URL="${HEALTH_URL:-https://$SITE_DOMAIN/}"
+# An EMPTY HEALTH_URL means "skip" (documented in config.example.sh); only a
+# config.sh that omits the key entirely falls back to the site root.
+[ -z "${HEALTH_URL+x}" ] && HEALTH_URL="https://${SITE_DOMAIN}/"
 if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
   sleep "${HEALTH_WAIT:-8}"  # let the app boot before checking
   RETRY="${HEALTH_RETRY:-3}"   # how many times to try (app may need a moment)

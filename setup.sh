@@ -52,6 +52,26 @@ echo "  📋 Copy from GitHub: open your repo → green Code button → SSH"
 REPO_URL=$(ask "GitHub repo SSH URL (git@github.com:...)" "git@github.com:user/repo.git")
 echo ""
 
+# Refuse the untouched placeholder defaults: pressing Enter through the wizard
+# used to write a config.sh that LOOKS fine, and auto_deploy's placeholder
+# guard does not catch these spellings — the first deploy then failed with a
+# confusing "Repository not found". Matched EXACTLY, so a real repo/dir whose
+# name merely contains "repo" or "myapp" is not rejected.
+if [ -z "$REPO_URL" ] || [ "$REPO_URL" = "git@github.com:user/repo.git" ] || \
+   [ "$REPO_URL" = "https://github.com/user/repo.git" ]; then
+  echo "❌ REPO_URL is still the placeholder ('$REPO_URL')."
+  echo "   Use your real repo, e.g. git@github.com:yourname/yourrepo.git"
+  exit 1
+fi
+if [ -z "$APP_DIR" ]; then
+  echo "❌ APP_DIR is empty — give the real folder on the server."
+  exit 1
+fi
+if [ "$APP_DIR" = "/home/$SERVER_USER/myapp" ]; then
+  echo "⚠️  APP_DIR is still the default example ('$APP_DIR')."
+  echo "   Continuing — edit APP_DIR in config.sh if your app lives elsewhere."
+fi
+
 # ── 2. App type (restart method + command hints auto-set) ──
 echo "  What kind of app is this?"
 echo "    python | node | php | wordpress | ruby | java | go | static | docker"
@@ -212,7 +232,8 @@ LOG_FILE=""
 RSYNC_EXCLUDES=""
 EOF
 
-chmod 600 config.sh
+chmod 600 config.sh 2>/dev/null
+[ -s config.sh ] || { echo "❌ Could not write config.sh (folder not writable / disk full?)"; exit 1; }
 
 # ── 5. Summary + next steps ──
 echo ""

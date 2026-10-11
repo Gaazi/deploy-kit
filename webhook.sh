@@ -32,11 +32,16 @@ start() {
     exit 1
   fi
   command -v socat >/dev/null 2>&1 || { echo "❌ socat not found — run: apt install socat"; exit 1; }
+  # openssl is REQUIRED: without it the HMAC verification cannot run, and a
+  # missing verifier must never mean "let everyone in" (fail closed).
+  command -v openssl >/dev/null 2>&1 || { echo "❌ openssl not found — run: apt install openssl"; exit 1; }
   if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
     echo "✅ Webhook listener already running (pid $(cat "$PIDFILE"))"
     exit 0
   fi
-  nohup socat TCP-LISTEN:"$PORT",fork,reuseaddr,max-children=10 \
+  # -T 10: total timeout, so a silent/slow connection cannot pin a handler
+  # slot (max-children=10) and block every later GitHub delivery.
+  nohup socat -T 10 TCP-LISTEN:"$PORT",fork,reuseaddr,max-children=10 \
     EXEC:"$SCRIPT_DIR/webhook.sh handler",setsid,stderr >> "$LOG" 2>&1 &
   echo $! > "$PIDFILE"
   echo "✅ Webhook listener started on port $PORT (pid $!)"
@@ -77,8 +82,16 @@ handler() {
       content-length:*)      LEN="${line#*: }" ;;
     esac
   done
+  # Content-Length is attacker-controlled BEFORE authentication: keep it
+  # numeric, reject oversize bodies (413) instead of buffering them, and read
+  # with head -c (dd bs=1 is ~1MB/s and would truncate the body on timeout).
+  case "$LEN" in ''|*[!0-9]*) LEN=0 ;; esac
+  if [ "$LEN" -gt 1048576 ]; then
+    printf 'HTTP/1.1 413 Payload Too Large\r\nContent-Type: text/plain\r\nContent-Length: 0\r\n\r\n'
+    exit 0
+  fi
   BODY=""
-  [ "$LEN" -gt 0 ] 2>/dev/null && BODY="$(dd bs=1 count="$LEN" 2>/dev/null)"
+  [ "$LEN" -gt 0 ] && BODY="$(head -c "$LEN" 2>/dev/null)"
   # extract branch: try our format first, then native GitHub webhook ref
   # use grep -o to avoid greedy .* matching wrong "ref" in minified JSON
   BRANCH="$(printf '%s' "$BODY" | grep -o '"branch"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"branch"[[:space:]]*:[[:space:]]*"//;s/"//')"
@@ -90,18 +103,25 @@ handler() {
   case "$BRANCH" in
     ''|*[!A-Za-z0-9._/-]*|*..*) BRANCH="" ;;
   esac
-  # verify: native GitHub webhook (HMAC) OR our custom header OR nothing
+  # Constant-time compare: HMAC both values under a fresh nonce. Both results
+  # must be NON-EMPTY — if openssl is missing or errors, both are empty and a
+  # plain compare would pass, turning the signature check into a fail-open
+  # (anyone sending a header would deploy).
+  ct_eq() {
+    [ -n "$1" ] && [ -n "$2" ] || return 1
+    _n="$$.$RANDOM"
+    _a="$(printf '%s' "$1" | openssl dgst -sha256 -hmac "$_n" 2>/dev/null)"
+    _b="$(printf '%s' "$2" | openssl dgst -sha256 -hmac "$_n" 2>/dev/null)"
+    [ -n "$_a" ] && [ "$_a" = "$_b" ]
+  }
+  # verify: native GitHub webhook (HMAC) OR our custom header
   AUTHORIZED=0
-  if [ -n "$SECRET" ]; then
+  if [ -n "$SECRET" ] && command -v openssl >/dev/null 2>&1; then
     if [ -n "$HUB_SIG" ]; then
-      # native GitHub webhook — verify HMAC-SHA256 (constant-time via double-HMAC)
+      # native GitHub webhook — verify HMAC-SHA256 over the raw body
       EXPECTED="sha256=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SECRET" 2>/dev/null | sed 's/.* //')"
-      # constant-time: HMAC both strings with a nonce — if equal, HMACs match
-      NONCE="$$.$RANDOM"
-      H1="$(printf '%s' "$HUB_SIG" | openssl dgst -sha256 -hmac "$NONCE" 2>/dev/null)"
-      H2="$(printf '%s' "$EXPECTED" | openssl dgst -sha256 -hmac "$NONCE" 2>/dev/null)"
-      [ "$H1" = "$H2" ] && AUTHORIZED=1
-    elif [ -n "$SECRET_HEADER" ] && [ "$SECRET_HEADER" = "$SECRET" ]; then
+      ct_eq "$HUB_SIG" "$EXPECTED" && AUTHORIZED=1
+    elif [ -n "$SECRET_HEADER" ] && ct_eq "$SECRET_HEADER" "$SECRET"; then
       AUTHORIZED=1
     fi
   fi
