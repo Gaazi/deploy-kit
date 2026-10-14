@@ -7,9 +7,11 @@ Updated: 2026-10-14
 - Linux CI passed on dev: 103 checks and 4 consistency checks (run 38540246840).
 - User-authorized dev to demo fast-forward completed and pushed (source 41e6d42).
 - Linux CI passed on demo: 103 checks and 4 consistency checks (run 38540467615).
+- User-authorized demo to main fast-forward completed and pushed (source 27417c5).
+- Linux CI passed on main: 103 checks and 4 consistency checks (run 38540691964).
 ## Pending
-- User authorization required before merging demo to main and creating stable release.
+- Stable release v1.1.0 publishing confirmation.
 ## Next Step
-- Await user instruction to merge demo to main and publish stable release v1.1.0.
+- Publish stable release v1.1.0 from main.
 
 
