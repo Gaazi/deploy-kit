@@ -14,12 +14,20 @@
 
 # ── Config load ─────────────────────────────────────────────
 SCRIPT_DIR="${KIT_REAL_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+# One installation lock covers both kit updates and the entire app deployment.
+if [ -f "$SCRIPT_DIR/lib/kit-lock.sh" ]; then
+  KIT_HOME="$SCRIPT_DIR"
+  source "$SCRIPT_DIR/lib/kit-lock.sh" || exit 1
+  kit_lock_acquire || exit 0
+  trap 'kit_lock_release' EXIT
+  [ ! -s "$SCRIPT_DIR/.kit-update/pending" ] || { echo "Kit update interrupted; run update.sh rollback."; exit 1; }
+fi
 # When KIT_SELF_UPDATE=yes, this process may BE the /tmp snapshot copy of the
 # script (the parent exec'd us with KIT_SNAP set). Trap it first thing so that
 # EVERY exit path — including the early skips (cron toggle, low disk) that
 # happen long before the deploy lock — removes the temp file.
 if [ -n "${KIT_SNAP:-}" ]; then
-  trap 'rm -f "$KIT_SNAP" 2>/dev/null' EXIT
+  trap 'declare -F kit_lock_release >/dev/null && kit_lock_release; rm -f "$KIT_SNAP" 2>/dev/null' EXIT
 fi
 BRANCH_ARG="${1:-}"
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
@@ -33,24 +41,26 @@ if [ ! -f "$CONFIG_FILE" ]; then
 fi
 source "$CONFIG_FILE"
 
-# ── Self-update snapshot guard (AFTER config, so KIT_SELF_UPDATE is known) ──
-# When KIT_SELF_UPDATE=yes, re-exec this script from a /tmp SNAPSHOT so the
-# later `git pull` can safely rewrite the real file — bash never executes a
-# file that changes under it (mid-run corruption risk on shared hosting).
-if [ "${KIT_SELF_UPDATE:-no}" = "yes" ] && [ -z "${KIT_SNAP_EXEC:-}" ] && [ -d "$SCRIPT_DIR/.git" ]; then
-  _snap="$(mktemp /tmp/kit-deploy.XXXXXX.sh 2>/dev/null)" || _snap=""
-  if [ -n "$_snap" ] && cp "$SCRIPT_DIR/auto_deploy.sh" "$_snap" 2>/dev/null; then
-    trap 'rm -f "${KIT_SNAP:-}" "${_snap:-}" 2>/dev/null' EXIT
-    KIT_SNAP_EXEC=1 KIT_REAL_DIR="$SCRIPT_DIR" KIT_SNAP="$_snap" \
-      exec /bin/bash "$_snap" "$@"
-  fi
-fi
-
 BRANCH="${1:-${DEFAULT_BRANCH:-main}}"
 if [ -z "$BRANCH_ARG" ] && [ -f "${SCRIPT_DIR}/config.${BRANCH}.sh" ]; then
   CONFIG_FILE="${SCRIPT_DIR}/config.${BRANCH}.sh"
   source "$CONFIG_FILE"
 fi
+# ── Self-update snapshot guard (AFTER config, so KIT_SELF_UPDATE is known) ──
+# When KIT_SELF_UPDATE=yes, re-exec this script from a /tmp SNAPSHOT so the
+# release updater can safely replace the real file — bash never executes a
+# file that changes under it (mid-run corruption risk on shared hosting).
+if { [ "${KIT_UPDATE_MODE:-}" = "auto" ] || { [ -z "${KIT_UPDATE_MODE:-}" ] && [ "${KIT_SELF_UPDATE:-no}" = "yes" ]; }; } && [ -z "${KIT_SNAP_EXEC:-}" ]; then
+  _snap="$(mktemp /tmp/kit-deploy.XXXXXX.sh 2>/dev/null)" || _snap=""
+  if [ -n "$_snap" ] && cp "$SCRIPT_DIR/auto_deploy.sh" "$_snap" 2>/dev/null; then
+    trap 'declare -F kit_lock_release >/dev/null && kit_lock_release; rm -f "${KIT_SNAP:-}" "${_snap:-}" 2>/dev/null' EXIT
+    KIT_REEXEC_LOCK="$$" KIT_SNAP_EXEC=1 KIT_REAL_DIR="$SCRIPT_DIR" KIT_SNAP="$_snap" \
+      exec /bin/bash "$_snap" "$@"
+  fi
+  echo "Could not snapshot deploy script; auto-update is unsafe."
+  exit 1
+fi
+
 USER_HOME="${HOME:-${SERVER_USER:+/home/$SERVER_USER}}"
 USER_HOME="${USER_HOME:-/home/$SERVER_USER}"
 APP_DIR="${APP_DIR:-$USER_HOME/app}"
@@ -125,13 +135,11 @@ esac
 
 log() { echo "$NOW: $1" >> "$LOG"; }
 
-# ── Optional self-update of the kit itself (safe: config.sh is gitignored) ──
-# If KIT_SELF_UPDATE=yes and this kit folder is a git clone, pull the latest
-# scripts from its own repo. config.sh + keys are gitignored, so they are
-# never touched. Failures are non-fatal (deploy continues).
-if [ "${KIT_SELF_UPDATE:-no}" = "yes" ] && [ -d "$SCRIPT_DIR/.git" ]; then
-  log "Kit self-update: git pull in $SCRIPT_DIR"
-  ( cd "$SCRIPT_DIR" && git pull --ff-only --quiet ) >> "$LOG" 2>&1 || log "Kit self-update: skipped (up to date or failed)"
+# Check releases at most daily; update errors never turn into app deployment errors.
+if [ -f "$SCRIPT_DIR/update.sh" ] && [ -f "$SCRIPT_DIR/lib/kit-lock.sh" ]; then
+  KIT_PARENT_LOCK="$$" bash "$SCRIPT_DIR/update.sh" check "$BRANCH" >> "$LOG" 2>&1 \
+    || log "Kit release check/update failed; installed kit kept (see log)"
+  [ ! -s "$SCRIPT_DIR/.kit-update/pending" ] || { echo "Kit recovery required: bash update.sh rollback"; exit 1; }
 fi
 
 # ── Multi-channel notification helper (Telegram, Discord, Slack, Email) ──
@@ -222,7 +230,7 @@ fi
 echo $$ > "$LOCK_DIR/pid" 2>/dev/null
 # NOTE: this trap REPLACES the snapshot trap above — clean both here,
 # otherwise /tmp/kit-deploy.* leaked on every KIT_SELF_UPDATE=yes deploy.
-trap 'rm -rf "$LOCK_DIR" 2>/dev/null; rm -f "${KIT_SNAP:-}" 2>/dev/null' EXIT
+trap 'declare -F kit_lock_release >/dev/null && kit_lock_release; rm -rf "$LOCK_DIR" 2>/dev/null; rm -f "${KIT_SNAP:-}" 2>/dev/null' EXIT
 
 # ── 1. Git workspace ────────────────────────────────────────
 # --single-branch: only this branch's history — minimum network + disk
@@ -550,7 +558,7 @@ if [ -n "$HEALTH_URL" ] && [ "$HEALTH_URL" != "https:///" ]; then
       PREV_SHA="$(cat "$WORKSPACE/.previous_sha" 2>/dev/null || echo '')"
       if [ -n "$PREV_SHA" ]; then
         log "Health FAILED — initiating auto-rollback to $PREV_SHA"
-        if ! ROLLBACK_AUTO=1 DEPLOY_LOCK_HELD=1 /bin/bash "${SCRIPT_DIR}/rollback.sh" "$BRANCH" "$PREV_SHA" >> "$LOG" 2>&1; then
+        if ! KIT_PARENT_LOCK="$$" ROLLBACK_AUTO=1 DEPLOY_LOCK_HELD=1 /bin/bash "${SCRIPT_DIR}/rollback.sh" "$BRANCH" "$PREV_SHA" >> "$LOG" 2>&1; then
           echo "$OLD_SHA" > "$WORKSPACE/.deployed_sha"
           notify "❌ <b>Health FAILED — Auto-rollback FAILED</b> ($SITE_DOMAIN · $BRANCH)
 Check server log: $LOG" "Deploy Auto-rollback FAILED: $SITE_DOMAIN ($BRANCH)"

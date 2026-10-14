@@ -10,6 +10,14 @@
 # ============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# One installation lock covers both kit updates and the entire app deployment.
+if [ -f "$SCRIPT_DIR/lib/kit-lock.sh" ]; then
+  KIT_HOME="$SCRIPT_DIR"
+  source "$SCRIPT_DIR/lib/kit-lock.sh" || exit 1
+  kit_lock_acquire || exit 1
+  trap 'kit_lock_release' EXIT
+  [ ! -s "$SCRIPT_DIR/.kit-update/pending" ] || { echo "Kit update interrupted; run update.sh rollback."; exit 1; }
+fi
 BRANCH_ARG="${1:-}"
 CONFIG_FILE="${SCRIPT_DIR}/config.sh"
 # Branch-specific config: if config.<branch>.sh exists, use it (e.g. config.dev.sh, config.main.sh)
@@ -116,7 +124,7 @@ if [ "${DEPLOY_LOCK_HELD:-0}" != "1" ] && [ "$LOCK_PID" != "$PPID" ]; then
     fi
   fi
   echo $$ > "$LOCK_DIR/pid" 2>/dev/null
-  trap 'rm -rf "$LOCK_DIR" 2>/dev/null' EXIT
+  trap 'declare -F kit_lock_release >/dev/null && kit_lock_release; rm -rf "$LOCK_DIR" 2>/dev/null' EXIT
 fi
 
 if [ -z "$TARGET_SHA" ]; then

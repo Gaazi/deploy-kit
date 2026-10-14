@@ -26,3 +26,7 @@ backups/
 Thumbs.db
 __pycache__/
 .trash/
+.kit-update/
+.kit-operation-lock/
+.kit-release/
+kit-files.sha256.next

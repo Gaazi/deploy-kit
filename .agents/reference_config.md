@@ -83,7 +83,9 @@ Webhook listener: `webhook.sh start|stop|status`. Needs socat (VPS only).
 | `WORKSPACE_BASE` | Clone workspace base | `/home/$USER/deploy-workspace` |
 | `TOGGLE_FLAG` | Flag path for toggle system (affects cron deploys only) | `/home/$USER/.deploy_github` |
 | `SKIP_WHEN_FLAG` | If set + flag exists → **cron-fired** deploy skipped (`DEPLOY_TRIGGER=cron`) | `""` |
-| `KIT_SELF_UPDATE` | `yes` → auto-pull kit updates from own git repo (if `$SCRIPT_DIR/.git` exists; config.sh gitignored, never touched; failure non-fatal) | `""` |
+| `KIT_SELF_UPDATE` | Legacy `yes` selects stable patch auto-update only when KIT_UPDATE_MODE is empty | `""` |
+| `KIT_UPDATE_MODE` | notify (daily check + deduplicated alerts), auto (same major.minor patches only), off; independent per installation/branch config | `notify` |
+| `KIT_UPDATE_REPO` | Kit Git upstream; empty uses kit origin for clones, default kit upstream for copies; private repos need normal Git credentials | `""` |
 | `DEFAULT_BRANCH` | Branch when none passed (auto_deploy + rollback) | `main` |
 | `LOG_FILE` | Log path | `/home/$USER/deploy.log` |
 | `RSYNC_EXCLUDES` | Extra rsync excludes, space-separated (added to defaults) | `""` |

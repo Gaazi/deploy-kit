@@ -69,7 +69,9 @@ WORKSPACE_BASE="/home/$SERVER_USER/deploy-workspace"  # clone workspace
 # ── Advanced (optional — dynamic defaults) ───────────────────
 TOGGLE_FLAG=""                        # "" = default /home/$SERVER_USER/.deploy_github
 SKIP_WHEN_FLAG=""                     # "1" = flag exists → CRON deploys skip (Actions/webhook/runner always run)
-KIT_SELF_UPDATE=""                    # "yes" = auto-pull kit updates from its own git repo (if cloned; config.sh is gitignored, never touched)
+KIT_SELF_UPDATE=""                    # legacy alias: yes enables patch auto-updates when KIT_UPDATE_MODE is empty
+KIT_UPDATE_MODE="notify"              # notify (default) | auto (compatible patches only) | off
+KIT_UPDATE_REPO=""                    # kit upstream Git URL; empty = kit origin, or default upstream for copies
 DEFAULT_BRANCH="main"                 # branch used when none is passed
 LOG_FILE=""                           # "" = default /home/$SERVER_USER/deploy.log
 RSYNC_EXCLUDES=""                     # extra rsync excludes, space-separated ("" = defaults only)

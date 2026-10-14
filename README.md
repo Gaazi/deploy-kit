@@ -76,7 +76,7 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 
 ---
 
-## 📁 Files (32 + .agents/)
+## 📁 Files (45 + .agents/)
 
 | File | What it does |
 |------|---------------|
@@ -105,6 +105,12 @@ The runner does nothing else — no checkout, no build, no migrate. All the work
 | `AGENTS.md` + `.agents/` | Agent rules + memory (for AI agents / future developers) |
 | `LICENSE` | MIT license |
 | `PROJECT_STATE.md` | Current work status |
+| `VERSION`, `RELEASE_NOTES.md` | Stable version and release notes |
+| `update.sh`, `release.sh` | Installation updates and maintainer release commands |
+| `kit-files.list`, `kit-files.sha256` | Explicit package list and file checksums |
+| `lib/kit-lock.sh`, `lib/kit-release.sh`, `lib/kit-install.sh`, `lib/kit-notify.sh` | Four focused update helpers |
+| `tests/kit-updates.sh` | Update and release regression checks |
+| `.github/workflows/release.yml`, `.gitattributes` | Test-gated manual releases and consistent file bytes |
 | `tests/deploy-failures.sh` | Tests for failed deploy commands and rollback |
 | `CLAUDE.md`, `GEMINI.md`, `.clinerules` | Agent rule pointers (three pointer files) |
 | `.github/copilot-instructions.md`, `.kilocode/rules/main.md`, `.roo/rules/main.md` | Agent rule pointers (three pointer files) |
@@ -212,7 +218,9 @@ nano config.sh
 | `DEPLOY_KEY` | Path to the GitHub deploy key | Key file | `/home/cpuser/.ssh/deploy_key` |
 | `WORKSPACE_BASE` | Where the git workspace lives | Path | `/home/cpuser/deploy-workspace` |
 | `TOGGLE_FLAG` / `SKIP_WHEN_FLAG` | Toggle system (optional) | Flag path + `1` | — |
-| `KIT_SELF_UPDATE` | `yes` = auto-pull kit updates from its own git repo (if cloned; `config.sh` is gitignored, never touched) | yes/no | `""` |
+| `KIT_SELF_UPDATE` | Legacy alias: `yes` chooses patch auto-update only when `KIT_UPDATE_MODE` is empty | yes/no | `""` |
+| `KIT_UPDATE_MODE` | `notify` checks daily and alerts; `auto` also installs compatible patches; `off` skips checking | notify/auto/off | `notify` |
+| `KIT_UPDATE_REPO` | Kit upstream Git URL; empty uses the kit clone origin, or default kit upstream for copies | Git URL | `""` |
 | `DEFAULT_BRANCH` | Default deploy branch | Branch | `main` |
 | `LOG_FILE` | Where to log | Path | `/home/cpuser/deploy.log` |
 | `RSYNC_EXCLUDES` | Extra rsync excludes (space-separated) | `uploads/` | — |
@@ -625,7 +633,7 @@ README.md
 
 ## ✅ Checklist (for completing the setup)
 
-- [ ] `~/deploy-kit/` on the server (32 files) — **or skip: the hosted workflow bootstraps it on first push**
+- [ ] `~/deploy-kit/` on the server (45 files) — **or skip: the hosted workflow bootstraps it on first push**
 - [ ] Created `config.sh` (wizard: `/bin/bash setup.sh`)
 - [ ] `chmod +x *.sh`
 - [ ] SSH keys + copy-paste: `/bin/bash keygen.sh` ✅
@@ -639,3 +647,92 @@ README.md
 ---
 
 **This kit is public-ready. None of your data/secrets. Anyone can take any project and run it.**
+
+## Versioned kit installs and releases
+
+A release is a numbered, tested copy of the kit. Stable releases come from main.
+Development happens on dev, verification on demo, then main receives the verified
+code. A main push alone is not a release and does not alert existing installations.
+Only stable tags vMAJOR.MINOR.PATCH are checked. Alpha/beta/prerelease tags are ignored.
+
+Install a separate dedicated deploy-kit folder for each project. Keep each
+installation's config.sh or config.<branch>.sh private. A Git clone can use its
+origin as KIT_UPDATE_REPO. A copied installation can come from the release tar.gz;
+extract it into its own folder, including hidden files, VERSION, lib/, and both
+kit-files manifests. Do not mix the kit's files into the root of an application.
+Configs, keys, site data and local runtime state are not included in release assets.
+
+Old installations need one manual upgrade to this versioned kit before they can
+check or receive update notices. Back up their kit folder, then install the new
+release in a separate folder and copy their private config/key files into it.
+Review script customizations before switching the trigger path to that folder.
+Do not replace or regenerate a user's config during this initial upgrade.
+
+Default KIT_UPDATE_MODE=notify checks at the next deploy, at most once per day per
+branch config. It does not install anything. It uses existing Telegram, Discord,
+Slack or email settings (and their app .env fallback). Successful delivery is
+recorded separately for each channel/version. Failed delivery retries at a later
+daily check. Quiet deploy alerts do not disable update notices. No configured
+channel means a log message only. Idle installations do not check by themselves.
+For daily checks without deploys, add your own server cron running the check
+command below; the kit does not install another cron job automatically.
+
+```bash
+bash update.sh check main              # cached daily check
+bash update.sh check main --force      # explicit fresh check/retry
+bash update.sh apply v1.1.0 main        # exact newer stable version
+bash update.sh apply v2.0.0 main --allow-major  # after compatibility review
+bash update.sh rollback main           # recover interrupted or last update
+```
+
+Choose KIT_UPDATE_MODE=auto independently in each installation to install only
+patches within its current major.minor line. Minor/major changes always need
+manual review. KIT_SELF_UPDATE=yes remains a legacy alias when KIT_UPDATE_MODE
+is empty; it now selects stable patch updates, not a pull of an arbitrary branch.
+Set MODE explicitly to override the alias. Main releases remain the update source.
+
+Checks use Git's normal credentials; private upstreams require working Git access
+on each server. Use SSH configuration or a credential helper. Do not put tokens
+in URLs, files in this public kit, or workflow arguments. Failed checks are cached
+for a day and do not interrupt app deploys. A forced check retries immediately.
+
+Updates hold an installation lock shared with deploy/rollback, execute from a
+private snapshot, stage the selected tag, validate file checksums and Bash syntax,
+and save a recoverable backup before modifying kit files. Local managed edits,
+unmanaged path collisions, symlinks and divergent local Git history refuse the
+update. Existing configs/keys and unrelated files are preserved. Git installs
+advance to a detached release commit; copied installs replace only listed kit
+files. Old removed copied files remain on disk; nothing outside the kit is synced.
+Update errors attempt recovery. An interrupted transaction blocks further deploys
+until rollback succeeds. Rollback also blocks automatic reinstall of that version;
+explicit manual apply remains available. If the installed updater cannot run,
+use KIT_HOME=/absolute/kit/path bash /absolute/kit/path/.kit-update/backup-.../files/update.sh rollback main.
+Keep .kit-update private and outside web access. It holds recovery backups/staging;
+old backups are retained for the operator to archive or remove deliberately.
+Checksums catch corruption/local changes; upstream Git transport and maintainer
+permissions remain the trust boundary, not a cryptographic release signature.
+
+### Maintainer release workflow
+
+```bash
+bash release.sh prepare v1.1.0  # local VERSION + checksums only; add matching notes
+# Run tests, commit/push dev, verify demo, then promote verified code to main.
+bash release.sh package v1.1.0  # full tests, deterministic tar.gz, no publication
+bash release.sh publish v1.1.0  # main only: full tests, tag push, GitHub Release
+```
+
+The GitHub CLI is required only for publishing. Stable tags are never moved.
+The explicit package list excludes configs, keys and local state. Release packages
+use committed files, so the tree must be clean and VERSION/checksums/notes must
+be committed before packaging. Re-run prepare after changing a packaged file.
+All scripts in the package receive syntax checks; the full source test suite must
+pass before publication. Run the full self-test from a Git source checkout.
+
+The manual **Deploy Kit Release** workflow on main provides the same test gate.
+Enter the version and leave publish=false for a reviewable artifact. Set
+publish=true only to publish. This uses one runner only when explicitly invoked;
+ordinary deploy triggers still do only the SSH trigger. If tag push succeeds but
+release upload fails, inspect the existing tag and retry publication at the same
+commit. Install checkers use stable tags, so the tag may become visible before the
+GitHub Release upload finishes. Publishing updates no server automatically unless
+that installation already has its checker installed and auto mode enabled.

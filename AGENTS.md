@@ -91,7 +91,7 @@ When you modify the kit, this table tells you which files to update. Anything no
 
 ---
 
-## File Structure (32 files + .agents/)
+## File Structure (45 files + .agents/)
 
 | File | Purpose |
 |------|---------|
@@ -120,6 +120,12 @@ When you modify the kit, this table tells you which files to update. Anything no
 | `AGENTS.md` | Project agent rules (this file) |
 | `LICENSE` | MIT |
 | `PROJECT_STATE.md` | Current work status |
+| `VERSION`, `RELEASE_NOTES.md` | Stable kit version and release notes |
+| `update.sh`, `release.sh` | Check/apply/recover kit updates and prepare/package/publish releases |
+| `kit-files.list`, `kit-files.sha256` | Explicit package paths and checksums |
+| `lib/kit-lock.sh`, `lib/kit-release.sh`, `lib/kit-install.sh`, `lib/kit-notify.sh` | Four update helpers |
+| `tests/kit-updates.sh` | Release/update regression tests |
+| `.github/workflows/release.yml`, `.gitattributes` | Manual test-gated releases and consistent bytes |
 | `tests/deploy-failures.sh` | Deploy failure regression checks |
 | `CLAUDE.md`, `GEMINI.md`, `.clinerules` | Agent rule pointers (3 files) |
 | `.github/copilot-instructions.md`, `.kilocode/rules/main.md`, `.roo/rules/main.md` | Agent rule pointers (3 files) |

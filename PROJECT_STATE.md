@@ -1,18 +1,13 @@
 # Project State
-Updated: 2026-10-11
+Updated: 2026-10-14
 ## Done
-- Deployment, rollback, setup, webhook, cron and backup features are implemented.
-- Fixed deploy clone/fetch/checkout/reset/rsync failure guards and failed auto-rollback reporting.
-- Fixed same-second backup overwrites; rotation checks now require all four dumps to survive.
-- Six new regression checks passed locally; Bash and Python syntax checks passed.
-- Linux CI passed: 80 core checks and 4 consistency checks (run 38156916690, source d1caba9).
-- Shared pointers initialized; self-test CI enabled on dev; fixes committed and pushed to dev.
-- User-authorized dev to demo fast-forward completed and pushed; demo matches verified source 2e32a64.
-- Latest source CI passed: run 38156969172 (80 core checks, 4 consistency checks).
-- User-authorized demo to main fast-forward completed and pushed; main matches demo at 2e32a64.
-- Main CI passed: run 38160541482 (80 core checks, 4 consistency checks).
+- Release and update subsystem implemented: VERSION (1.1.0), release.sh, update.sh, and lib helpers.
+- 23 kit update/rollback integration checks passed.
+- Test counts updated across test.yml (103 checks) and MEMORY.md.
+- 4/4 documentation and file consistency checks passed (45 tracked files).
 ## Pending
-- Live server verification is not performed; it needs an explicit deployment request.
-- Full local integration tests require rsync; Git Bash lacks it and WSL is unavailable.
+- Remote Linux CI run for dev branch to verify full test suite with rsync.
+- User authorization required before merging dev to demo or demo to main.
 ## Next Step
-- Live server verification only on explicit request; continue development on dev.
+- Push dev commit and monitor GitHub Actions CI self-test.
+

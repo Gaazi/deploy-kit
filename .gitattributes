@@ -1,0 +1,2 @@
+# Release checksums must describe identical bytes on Windows and Linux.
+* text=auto eol=lf

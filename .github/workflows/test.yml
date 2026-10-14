@@ -5,7 +5,7 @@ name: "Deploy Kit: Self-Test"
 
 on:
   push:
-    branches: [dev, main]
+    branches: [dev, demo, main]
     # The self-test also guards README/AGENTS counts, .agents docs and
     # db-dump.py syntax — a docs-only or .py-only change must still run it.
     paths:
@@ -14,6 +14,9 @@ on:
       - '*.md'
       - '*.example'
       - 'tests/**'
+      - 'lib/**'
+      - 'VERSION'
+      - 'kit-files.*'
       - '.agents/**'
       - '.github/workflows/*.yml*'
   pull_request:
@@ -23,13 +26,16 @@ on:
       - '*.md'
       - '*.example'
       - 'tests/**'
+      - 'lib/**'
+      - 'VERSION'
+      - 'kit-files.*'
       - '.agents/**'
       - '.github/workflows/*.yml*'
   workflow_dispatch:
 
 jobs:
   selftest:
-    name: Run test.sh (80 checks)
+    name: Run test.sh (103 checks)
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

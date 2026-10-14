@@ -1,0 +1,46 @@
+name: Deploy Kit Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable version matching VERSION (vMAJOR.MINOR.PATCH)
+        required: true
+        type: string
+      publish:
+        description: Publish the tested tag and GitHub Release
+        default: false
+        type: boolean
+permissions:
+  contents: write
+concurrency:
+  group: kit-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_PUBLISH: ${{ inputs.publish }}
+      GIT_COMMITTER_NAME: Deploy Kit Release
+      GIT_COMMITTER_EMAIL: release@users.noreply.github.com
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Ensure rsync
+        run: command -v rsync >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq rsync)
+      - name: Test, package and optionally publish
+        run: |
+          if [ "$RELEASE_PUBLISH" = true ]; then
+            bash release.sh publish "$RELEASE_VERSION"
+          else
+            bash release.sh package "$RELEASE_VERSION"
+          fi
+      - name: Keep reviewable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-kit-release
+          path: .kit-release/*/*.tar.gz

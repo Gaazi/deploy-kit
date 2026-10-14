@@ -111,7 +111,7 @@
 
 ## CURRENT STATUS (2026-10-11)
 
-- **Test count:** 80 checks (`test.sh`), CI name synced in test.yml. When adding tests, update: test.sh → test.yml name → MEMORY self-test line.
+- **Test count:** 103 checks (`test.sh`), CI name synced in test.yml. When adding tests, update: test.sh → test.yml name → MEMORY self-test line.
 - **Branches:** `main` = `origin/main` (pushed). `origin/dev` carries 1 extra docs commit — left unmerged on purpose (only the user merges to main).
 - **NO AUTO-MERGE (user rule, CRITICAL):** Never merge dev→main (or promote branches) on my own. Only merge/push-to-main when the USER explicitly says so (e.g. "merge karo", "merge and push"). Committing to dev + pushing dev is fine any time; promoting to main requires explicit user instruction.
 - **Standalone repo public-ready:** zero related-project references anywhere (files, git history subjects+bodies, refs). Git history was filter-branch rewritten — NEVER reintroduce project names in commits.

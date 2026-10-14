@@ -154,3 +154,25 @@ Log rotation: `$LOG` rotated to `$LOG.1` when it exceeds 1 MB (kept light).
 - **Doctor web-access check:** uses `case "$SCRIPT_DIR" in "$APP_DIR"/*)` — the trailing `/*` matters (avoids `/home/user/app2` matching `/home/user/app`). If `APP_DIR` is set and kit is inside it, `.htaccess` must exist or doctor FAILs.
 - **Branch safety:** webhook.sh validates BRANCH (only `[A-Za-z0-9._/-]`, rejects `..`) before it becomes a path. Workflows pass branch via env + `tr -cd` sanitize — never inline `'${{ github.ref_name }}'` in a shell string.
 - **`.htaccess`:** ships with the kit, denies all web access — protects `config.sh` when the kit lives inside a web-accessible app dir. Do not delete.
+
+## Stable kit update/release flow
+
+Installation lock serializes kit updates, app deploys and rollbacks. Auto deploys
+use a script snapshot. update.sh always snapshots itself and its libraries before
+replacement. Default daily cached checks only notify; patch auto-update is opt-in
+(KIT_UPDATE_MODE=auto, or legacy KIT_SELF_UPDATE=yes with MODE unset). Minor/major
+changes require manual apply; major apply requires --allow-major. Config, keys,
+local edits and application files are protected. Checks work only after the new
+checker is installed; idle servers need an explicitly configured check cron.
+
+update.sh apply validates a tagged package and stages a recoverable backup.
+Failure attempts restoration; a pending journal blocks later deployments.
+update.sh rollback restores managed files and Git metadata and blocks auto retry
+of the failed version. State lives privately in .kit-update (ignored).
+
+release.sh prepare creates version/checksums locally; package runs full tests and
+creates deterministic tar.gz from committed explicit paths; publish runs on synced
+main, tests, pushes an immutable stable tag and creates a GitHub Release.
+.github/workflows/release.yml is a manual package/publish gate on main.
+Only main stable releases are distributed; prereleases are ignored. Private Git
+upstreams need normal credentials. No workflow deploys a live website here.
